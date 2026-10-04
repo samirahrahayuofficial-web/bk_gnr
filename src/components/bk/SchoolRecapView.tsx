@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { AnalysisService } from '../../services/AnalysisService';
 import { BidangBarChart } from '../charts/BidangBarChart';
@@ -7,6 +7,14 @@ import { Sparkles, Users, Award, TrendingUp, CheckCircle, Clock } from 'lucide-r
 import { PriorityBadge } from '../common/PriorityBadge';
 
 export const SchoolRecapView: React.FC = () => {
+  const [syncKey, setSyncKey] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setSyncKey((k) => k + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
+
   const overview = AnalysisService.getSchoolOverview();
   const classes = db.getClasses();
   const students = db.getStudents();

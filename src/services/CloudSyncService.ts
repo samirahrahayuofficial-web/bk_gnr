@@ -15,11 +15,15 @@ import {
   CounselingNote,
   Student,
   User,
+  Teacher,
   ClassRoom,
   StudyProgram,
   SystemSettings,
   AcademicYear,
   QuestionnaireAssignment,
+  QuestionnaireCategory,
+  QuestionnaireQuestion,
+  AuditLog,
 } from '../types/database';
 
 export class CloudSyncService {
@@ -59,7 +63,53 @@ export class CloudSyncService {
       );
       this.unsubscribers.push(unsubSettings);
 
-      // 2. Academic Years (Daftar Tahun Ajaran)
+      // 2. Users (Data Pengguna / Akun Sistem)
+      const usersCol = collection(firestore, 'users');
+      const unsubUsers = onSnapshot(
+        usersCol,
+        (snap) => {
+          if (!snap.empty) {
+            const cloudUsers: User[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as User;
+              if (data && data.id) cloudUsers.push(data);
+            });
+            localStorage.setItem('sibks_users_v2', JSON.stringify(cloudUsers));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          } else {
+            // Seed local users to cloud if empty
+            const local = JSON.parse(localStorage.getItem('sibks_users_v2') || '[]');
+            if (local.length > 0) {
+              this.syncAllUsersToCloud(local);
+            }
+          }
+        },
+        (err) => console.error('Users listener error:', err)
+      );
+      this.unsubscribers.push(unsubUsers);
+
+      // 3. Teachers (Data Guru BK)
+      const teachersCol = collection(firestore, 'teachers');
+      const unsubTeachers = onSnapshot(
+        teachersCol,
+        (snap) => {
+          if (!snap.empty) {
+            const cloudTeachers: Teacher[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as Teacher;
+              if (data && data.id) cloudTeachers.push(data);
+            });
+            localStorage.setItem('sibks_teachers_v2', JSON.stringify(cloudTeachers));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          }
+        },
+        (err) => console.error('Teachers listener error:', err)
+      );
+      this.unsubscribers.push(unsubTeachers);
+
+      // 4. Academic Years (Daftar Tahun Ajaran)
       const ayCol = collection(firestore, 'academic_years');
       const unsubAy = onSnapshot(
         ayCol,
@@ -85,7 +135,7 @@ export class CloudSyncService {
       );
       this.unsubscribers.push(unsubAy);
 
-      // 3. Students (Data Siswa)
+      // 5. Students (Data Siswa)
       const studentsCol = collection(firestore, 'students');
       const unsubStudents = onSnapshot(
         studentsCol,
@@ -99,13 +149,18 @@ export class CloudSyncService {
             localStorage.setItem('sibks_students_v2', JSON.stringify(cloudStudents));
             if (onSyncCallback) onSyncCallback();
             window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          } else {
+            const local = JSON.parse(localStorage.getItem('sibks_students_v2') || '[]');
+            if (local.length > 0) {
+              this.syncAllStudentsToCloud(local);
+            }
           }
         },
         (err) => console.error('Students listener error:', err)
       );
       this.unsubscribers.push(unsubStudents);
 
-      // 4. Classes (Data Rombel Kelas)
+      // 6. Classes (Data Rombel Kelas)
       const classesCol = collection(firestore, 'classes');
       const unsubClasses = onSnapshot(
         classesCol,
@@ -119,13 +174,18 @@ export class CloudSyncService {
             localStorage.setItem('sibks_classes_v2', JSON.stringify(cloudClasses));
             if (onSyncCallback) onSyncCallback();
             window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          } else {
+            const local = JSON.parse(localStorage.getItem('sibks_classes_v2') || '[]');
+            if (local.length > 0) {
+              this.syncAllClassesToCloud(local);
+            }
           }
         },
         (err) => console.error('Classes listener error:', err)
       );
       this.unsubscribers.push(unsubClasses);
 
-      // 5. Study Programs (Program Keahlian)
+      // 7. Study Programs (Program Keahlian)
       const programsCol = collection(firestore, 'programs');
       const unsubPrograms = onSnapshot(
         programsCol,
@@ -145,7 +205,27 @@ export class CloudSyncService {
       );
       this.unsubscribers.push(unsubPrograms);
 
-      // 6. Responses (Hasil Pengisian Siswa)
+      // 8. Assignments (Penugasan Angket)
+      const assignmentsCol = collection(firestore, 'assignments');
+      const unsubAssignments = onSnapshot(
+        assignmentsCol,
+        (snap) => {
+          if (!snap.empty) {
+            const cloudAssignments: QuestionnaireAssignment[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as QuestionnaireAssignment;
+              if (data && data.id) cloudAssignments.push(data);
+            });
+            localStorage.setItem('sibks_assignments_v2', JSON.stringify(cloudAssignments));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          }
+        },
+        (err) => console.error('Assignments listener error:', err)
+      );
+      this.unsubscribers.push(unsubAssignments);
+
+      // 9. Responses (Hasil Pengisian Siswa)
       const responsesCol = collection(firestore, 'responses');
       const unsubResponses = onSnapshot(
         responsesCol,
@@ -172,7 +252,7 @@ export class CloudSyncService {
       );
       this.unsubscribers.push(unsubResponses);
 
-      // 7. Answers (Jawaban Butir Siswa)
+      // 10. Answers (Jawaban Butir Siswa)
       const answersCol = collection(firestore, 'answers');
       const unsubAnswers = onSnapshot(
         answersCol,
@@ -196,7 +276,7 @@ export class CloudSyncService {
       );
       this.unsubscribers.push(unsubAnswers);
 
-      // 8. Follow-ups (Tindak Lanjut BK)
+      // 11. Follow-ups (Tindak Lanjut BK)
       const followUpsCol = collection(firestore, 'follow_ups');
       const unsubFollowUps = onSnapshot(
         followUpsCol,
@@ -220,7 +300,7 @@ export class CloudSyncService {
       );
       this.unsubscribers.push(unsubFollowUps);
 
-      // 9. Counseling Notes (Catatan Konseling)
+      // 12. Counseling Notes (Catatan Konseling)
       const notesCol = collection(firestore, 'counseling_notes');
       const unsubNotes = onSnapshot(
         notesCol,
@@ -244,6 +324,32 @@ export class CloudSyncService {
       );
       this.unsubscribers.push(unsubNotes);
 
+      // 13. Audit Logs (Log Aktivitas)
+      const auditCol = collection(firestore, 'audit_logs');
+      const unsubAudit = onSnapshot(
+        auditCol,
+        (snapshot) => {
+          const cloudList: AuditLog[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as AuditLog;
+            if (data && data.id) {
+              cloudList.push(data);
+            }
+          });
+
+          if (!snapshot.empty) {
+            // Sort by timestamp desc
+            cloudList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            localStorage.setItem('sibks_audit_logs_v2', JSON.stringify(cloudList));
+          }
+
+          if (onSyncCallback) onSyncCallback();
+          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+        },
+        (err) => console.error('Audit_logs listener error:', err)
+      );
+      this.unsubscribers.push(unsubAudit);
+
       console.log('SIBKS Multi-Device Cloud Firestore Synchronizer Active and Connected!');
     } catch (err) {
       console.error('Failed to initialize cloud sync listeners', err);
@@ -257,6 +363,49 @@ export class CloudSyncService {
       await setDoc(docRef, settings, { merge: true });
     } catch (e) {
       console.error('Failed to sync settings to cloud', e);
+    }
+  }
+
+  // --- USERS SYNC ---
+  public static async syncUserToCloud(user: User): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'users', user.id);
+      await setDoc(docRef, user, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync user to cloud', e);
+    }
+  }
+
+  public static async syncAllUsersToCloud(users: User[]): Promise<void> {
+    if (!users || users.length === 0) return;
+    try {
+      const batch = writeBatch(firestore);
+      users.forEach((u) => {
+        const docRef = doc(firestore, 'users', u.id);
+        batch.set(docRef, u, { merge: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('Failed to sync all users to cloud', e);
+    }
+  }
+
+  public static async deleteUserFromCloud(id: string): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'users', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error('Failed to delete user from cloud', e);
+    }
+  }
+
+  // --- TEACHERS SYNC ---
+  public static async syncTeacherToCloud(teacher: Teacher): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'teachers', teacher.id);
+      await setDoc(docRef, teacher, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync teacher to cloud', e);
     }
   }
 
@@ -303,6 +452,20 @@ export class CloudSyncService {
     }
   }
 
+  public static async syncAllStudentsToCloud(students: Student[]): Promise<void> {
+    if (!students || students.length === 0) return;
+    try {
+      const batch = writeBatch(firestore);
+      students.forEach((s) => {
+        const docRef = doc(firestore, 'students', s.id);
+        batch.set(docRef, s, { merge: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('Failed to sync all students to cloud', e);
+    }
+  }
+
   public static async deleteStudentFromCloud(id: string): Promise<void> {
     try {
       const docRef = doc(firestore, 'students', id);
@@ -319,6 +482,20 @@ export class CloudSyncService {
       await setDoc(docRef, cls, { merge: true });
     } catch (e) {
       console.error('Failed to sync class to cloud', e);
+    }
+  }
+
+  public static async syncAllClassesToCloud(classes: ClassRoom[]): Promise<void> {
+    if (!classes || classes.length === 0) return;
+    try {
+      const batch = writeBatch(firestore);
+      classes.forEach((c) => {
+        const docRef = doc(firestore, 'classes', c.id);
+        batch.set(docRef, c, { merge: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('Failed to sync all classes to cloud', e);
     }
   }
 
@@ -347,25 +524,6 @@ export class CloudSyncService {
       await deleteDoc(docRef);
     } catch (e) {
       console.error('Failed to delete program from cloud', e);
-    }
-  }
-
-  // --- USERS SYNC ---
-  public static async syncUserToCloud(user: User): Promise<void> {
-    try {
-      const docRef = doc(firestore, 'users', user.id);
-      await setDoc(docRef, user, { merge: true });
-    } catch (e) {
-      console.error('Failed to sync user to cloud', e);
-    }
-  }
-
-  public static async deleteUserFromCloud(id: string): Promise<void> {
-    try {
-      const docRef = doc(firestore, 'users', id);
-      await deleteDoc(docRef);
-    } catch (e) {
-      console.error('Failed to delete user from cloud', e);
     }
   }
 
@@ -478,6 +636,16 @@ export class CloudSyncService {
       await deleteDoc(docRef);
     } catch (e) {
       console.error('Failed to delete counseling note from cloud', e);
+    }
+  }
+
+  // --- AUDIT LOGS SYNC ---
+  public static async syncAuditLogToCloud(log: AuditLog): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'audit_logs', log.id);
+      await setDoc(docRef, log, { merge: true });
+    } catch (e) {
+      console.error('Failed to push audit log to cloud', e);
     }
   }
 }

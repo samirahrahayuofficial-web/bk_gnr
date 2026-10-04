@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { User, UserRole } from '../../types/database';
 import { useAuth } from '../../context/AuthContext';
@@ -34,6 +34,12 @@ export const MasterUser: React.FC = () => {
   const { showToast } = useNotification();
 
   const [users, setUsers] = useState<User[]>(() => db.getUsers());
+
+  useEffect(() => {
+    const handleSync = () => setUsers(db.getUsers());
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');

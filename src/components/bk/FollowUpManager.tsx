@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { CounselingService } from '../../services/CounselingService';
 import { BKServiceType, FollowUp, FollowUpStatus } from '../../types/database';
@@ -22,6 +22,12 @@ export const FollowUpManager: React.FC = () => {
   const { showToast } = useNotification();
 
   const [followUps, setFollowUps] = useState<FollowUp[]>(() => CounselingService.getAllFollowUps());
+
+  useEffect(() => {
+    const handleSync = () => setFollowUps(CounselingService.getAllFollowUps());
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('');
   const [filterBidang, setFilterBidang] = useState<string>('');

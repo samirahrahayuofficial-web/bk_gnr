@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { useAuth } from '../../context/AuthContext';
 import { QuestionnaireService } from '../../services/QuestionnaireService';
@@ -29,6 +29,13 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   onViewProfile,
 }) => {
   const { currentStudent } = useAuth();
+  const [syncKey, setSyncKey] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setSyncKey((k) => k + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
 
   if (!currentStudent) {
     return (

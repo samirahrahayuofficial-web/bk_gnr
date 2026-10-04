@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { CounselingService } from '../../services/CounselingService';
 import { BKServiceType, CounselingNote } from '../../types/database';
@@ -11,6 +11,12 @@ export const CounselingNotesManager: React.FC = () => {
   const { showToast } = useNotification();
 
   const [notes, setNotes] = useState<CounselingNote[]>(() => CounselingService.getAllCounselingNotes());
+
+  useEffect(() => {
+    const handleSync = () => setNotes(CounselingService.getAllCounselingNotes());
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
 

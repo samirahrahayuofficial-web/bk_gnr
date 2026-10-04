@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { AnalysisService } from '../../services/AnalysisService';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +9,13 @@ import { CareerBadge } from '../common/CareerBadge';
 export const StudentHistory: React.FC = () => {
   const { currentStudent } = useAuth();
   const [selectedResponseId, setSelectedResponseId] = useState<string | null>(null);
+  const [syncKey, setSyncKey] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setSyncKey((k) => k + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
 
   if (!currentStudent) {
     return (

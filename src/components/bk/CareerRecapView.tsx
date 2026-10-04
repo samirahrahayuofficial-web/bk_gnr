@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { AnalysisService } from '../../services/AnalysisService';
 import { ReportingService } from '../../services/ReportingService';
@@ -9,6 +9,14 @@ import { StudentDetailModal } from './StudentDetailModal';
 
 export const CareerRecapView: React.FC = () => {
   const { showToast } = useNotification();
+  const [syncKey, setSyncKey] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setSyncKey((k) => k + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
+
   const [selectedDominant, setSelectedDominant] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
