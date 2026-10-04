@@ -384,6 +384,73 @@ export class CloudSyncService {
     }
   }
 
+  // --- MANUAL DIRECT PULL FROM CLOUD ---
+  public static async pullAllDataFromCloud(): Promise<{
+    success: boolean;
+    message: string;
+    responsesCount: number;
+    answersCount: number;
+  }> {
+    try {
+      // 1. Pull Responses
+      const responsesCol = collection(firestore, 'responses');
+      const respSnap = await getDocs(responsesCol);
+      const cloudResponses: QuestionnaireResponse[] = [];
+      respSnap.forEach((d) => {
+        const data = d.data() as QuestionnaireResponse;
+        if (data && data.id) cloudResponses.push(data);
+      });
+
+      // 2. Pull Answers
+      const answersCol = collection(firestore, 'answers');
+      const ansSnap = await getDocs(answersCol);
+      const cloudAnswers: QuestionnaireAnswer[] = [];
+      ansSnap.forEach((d) => {
+        const data = d.data() as QuestionnaireAnswer;
+        if (data && data.id) cloudAnswers.push(data);
+      });
+
+      // Merge responses
+      const localResponses: QuestionnaireResponse[] = JSON.parse(
+        localStorage.getItem('sibks_responses_v2') || '[]'
+      );
+      const respMap = new Map<string, QuestionnaireResponse>();
+      cloudResponses.forEach((r) => respMap.set(r.id, r));
+      localResponses.forEach((lr) => {
+        if (!respMap.has(lr.id)) respMap.set(lr.id, lr);
+      });
+      localStorage.setItem('sibks_responses_v2', JSON.stringify(Array.from(respMap.values())));
+
+      // Merge answers
+      const localAnswers: QuestionnaireAnswer[] = JSON.parse(
+        localStorage.getItem('sibks_answers_v2') || '[]'
+      );
+      const ansMap = new Map<string, QuestionnaireAnswer>();
+      cloudAnswers.forEach((a) => ansMap.set(a.id, a));
+      localAnswers.forEach((la) => {
+        if (!ansMap.has(la.id)) ansMap.set(la.id, la);
+      });
+      localStorage.setItem('sibks_answers_v2', JSON.stringify(Array.from(ansMap.values())));
+
+      window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+
+      return {
+        success: true,
+        message: `Berhasil menarik ${cloudResponses.length} respon dan ${cloudAnswers.length} jawaban dari Cloud Firestore.`,
+        responsesCount: cloudResponses.length,
+        answersCount: cloudAnswers.length,
+      };
+    } catch (e: any) {
+      console.error('Failed to pull all data from cloud:', e);
+      return {
+        success: false,
+        message: e?.message || 'Gagal menarik data dari cloud.',
+        responsesCount: 0,
+        answersCount: 0,
+      };
+    }
+  }
+
   // --- SETTINGS SYNC ---
   public static async syncSettingsToCloud(settings: SystemSettings): Promise<void> {
     try {

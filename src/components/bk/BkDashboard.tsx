@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { ReportingService } from '../../services/ReportingService';
 import { useNotification } from '../../context/NotificationContext';
+import { CloudSyncService } from '../../services/CloudSyncService';
 
 interface BkDashboardProps {
   onNavigate: (menu: string) => void;
@@ -34,6 +35,18 @@ export const BkDashboard: React.FC<BkDashboardProps> = ({ onNavigate }) => {
 
   const overview = AnalysisService.getSchoolOverview();
   const { showToast } = useNotification();
+  const [isPulling, setIsPulling] = useState(false);
+
+  const handlePullFromCloud = async () => {
+    setIsPulling(true);
+    const res = await CloudSyncService.pullAllDataFromCloud();
+    setIsPulling(false);
+    if (res.success) {
+      showToast('success', 'Sinkronisasi Cloud Berhasil', res.message);
+    } else {
+      showToast('error', 'Gagal Sinkronisasi', res.message);
+    }
+  };
 
   const handleExportAKPD = () => {
     ReportingService.exportAKPDRecap();
@@ -77,6 +90,15 @@ export const BkDashboard: React.FC<BkDashboardProps> = ({ onNavigate }) => {
             >
               <ListTodo className="w-4 h-4" />
               <span>Tindak Lanjut Layanan</span>
+            </button>
+            <button
+              onClick={handlePullFromCloud}
+              disabled={isPulling}
+              className="flex items-center gap-2 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              title="Tarik seluruh data respon dan isian siswa terbaru dari Cloud Firestore"
+            >
+              <Cloud className={`w-4 h-4 ${isPulling ? 'animate-spin' : ''}`} />
+              <span>{isPulling ? 'Menyinkronkan...' : 'Sinkronkan Data Cloud'}</span>
             </button>
             <button
               onClick={handleExportAKPD}

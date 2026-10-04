@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { useAuth } from '../../context/AuthContext';
 import { QuestionnaireService } from '../../services/QuestionnaireService';
+import { CloudSyncService } from '../../services/CloudSyncService';
 import {
   ClipboardList,
   CheckCircle2,
@@ -34,8 +35,23 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = ({
   useEffect(() => {
     const handleSync = () => setSyncKey((k) => k + 1);
     window.addEventListener('sibks_data_synced', handleSync);
+
+    // Auto-sync existing student responses & answers to cloud if needed
+    if (currentStudent) {
+      const studentResponses = db.getResponses().filter(
+        (r) => r.student_id === currentStudent.id || r.student_id === currentStudent.nis
+      );
+      studentResponses.forEach((resp) => {
+        CloudSyncService.syncResponseToCloud(resp);
+        const ans = db.getAnswers().filter((a) => a.response_id === resp.id);
+        if (ans.length > 0) {
+          CloudSyncService.syncAnswersToCloud(ans);
+        }
+      });
+    }
+
     return () => window.removeEventListener('sibks_data_synced', handleSync);
-  }, []);
+  }, [currentStudent?.id]);
 
   if (!currentStudent) {
     return (
