@@ -365,6 +365,22 @@ class RelationalDatabase {
     this.set(STORAGE_KEYS.STUDENTS, list);
     CloudSyncService.deleteStudentFromCloud(id);
   }
+  public deleteStudentsBatch(ids: string[]): void {
+    const idSet = new Set(ids);
+    const list = this.getStudents().filter((s) => !idSet.has(s.id));
+    this.set(STORAGE_KEYS.STUDENTS, list);
+    CloudSyncService.deleteStudentsBatchFromCloud(ids);
+
+    // Also remove associated student user accounts
+    const remainingUsers = this.getUsers().filter((u) => !u.related_id || !idSet.has(u.related_id));
+    this.set(STORAGE_KEYS.USERS, remainingUsers);
+  }
+  public deleteAllStudents(): void {
+    this.set(STORAGE_KEYS.STUDENTS, []);
+    CloudSyncService.deleteAllStudentsFromCloud();
+    const remainingUsers = this.getUsers().filter((u) => u.role !== 'SISWA');
+    this.set(STORAGE_KEYS.USERS, remainingUsers);
+  }
 
   // Teachers
   public getTeachers(): Teacher[] {

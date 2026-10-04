@@ -475,6 +475,35 @@ export class CloudSyncService {
     }
   }
 
+  public static async deleteStudentsBatchFromCloud(ids: string[]): Promise<void> {
+    if (!ids || ids.length === 0) return;
+    try {
+      const batch = writeBatch(firestore);
+      ids.forEach((id) => {
+        const docRef = doc(firestore, 'students', id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('Failed to delete students batch from cloud', e);
+    }
+  }
+
+  public static async deleteAllStudentsFromCloud(): Promise<void> {
+    try {
+      const studentsCol = collection(firestore, 'students');
+      const snap = await getDocs(studentsCol);
+      if (snap.empty) return;
+      const batch = writeBatch(firestore);
+      snap.forEach((d) => {
+        batch.delete(d.ref);
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('Failed to delete all students from cloud', e);
+    }
+  }
+
   // --- CLASSES SYNC ---
   public static async syncClassToCloud(cls: ClassRoom): Promise<void> {
     try {
