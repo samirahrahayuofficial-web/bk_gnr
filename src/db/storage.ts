@@ -350,7 +350,7 @@ class RelationalDatabase {
 
   // Students
   public getStudents(): Student[] {
-    return this.get<Student[]>(STORAGE_KEYS.STUDENTS, []);
+    return this.get<Student[]>(STORAGE_KEYS.STUDENTS, initialStudents);
   }
   public saveStudent(student: Student): void {
     const list = this.getStudents();

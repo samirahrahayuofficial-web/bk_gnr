@@ -113,13 +113,41 @@ export const MasterSiswa: React.FC = () => {
     setShowModal(true);
   };
 
-  const handleResetToDefaultSeed = () => {
-    if (confirm(`PERINGATAN: Apakah Anda yakin ingin memulihkan / reload seluruh master ${initialStudents.length} data siswa resmi (Kelas X, XI, XII seluruh jurusan)?`)) {
-      localStorage.setItem('sibks_students_v2', JSON.stringify(initialStudents));
-      localStorage.setItem('sibks_classes_v2', JSON.stringify(initialClasses));
-      localStorage.setItem('sibks_programs_v2', JSON.stringify(initialStudyPrograms));
-      reloadData();
-      showToast('success', 'Data Dipulihkan', `Berhasil memuat ${initialStudents.length} data siswa lengkap.`);
+  const handleResetToDefaultSeed = async () => {
+    try {
+      const newUsers = initialStudents.map((s) => ({
+        id: `usr-std-${s.id}`,
+        username: s.nis,
+        name: s.name,
+        role: 'SISWA' as const,
+        email: `${s.nis}@smkn1gunungguruh.sch.id`,
+        password: s.nis,
+        is_active: true,
+        related_id: s.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const nonStudentUsers = db.getUsers().filter((u) => u.role !== 'SISWA');
+      const finalUsers = [...nonStudentUsers, ...newUsers];
+
+      db.saveStudentsDirectly(initialStudents, finalUsers);
+      setStudents(initialStudents);
+      setSelectedIds(new Set());
+
+      if (currentUser) {
+        AuditService.log(
+          currentUser.id,
+          currentUser.name,
+          role,
+          'IMPORT_STUDENTS',
+          'Student',
+          `Memuat ulang ${initialStudents.length} data siswa resmi dari buku daftar hadir.`
+        );
+      }
+      showToast('success', 'Data Resmi Diterapkan', `Berhasil memuat ${initialStudents.length} data siswa resmi lengkap beserta akun login.`);
+    } catch (e: any) {
+      showToast('error', 'Gagal', e.message || 'Gagal memuat data siswa.');
     }
   };
 
