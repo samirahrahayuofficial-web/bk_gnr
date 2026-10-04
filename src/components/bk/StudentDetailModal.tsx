@@ -54,6 +54,10 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
     mode: 'SINGLE' | 'ALL';
   } | null>(null);
 
+  // State to toggle detailed item-by-item answers
+  const [showItemDetails, setShowItemDetails] = useState(false);
+  const [itemFilter, setItemFilter] = useState<'ALL' | 'YES' | 'NO'>('ALL');
+
   // New Follow-Up Form State
   const [showAddFollowUp, setShowAddFollowUp] = useState(false);
   const [fuBidang, setFuBidang] = useState<'Pribadi' | 'Sosial' | 'Belajar' | 'Karir'>('Karir');
@@ -776,6 +780,132 @@ export const StudentDetailModal: React.FC<StudentDetailModalProps> = ({
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Item-by-item answer sheet */}
+                  <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+                    <div className="p-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <ListTodo className="w-4 h-4 text-blue-600" />
+                        <span className="font-bold text-slate-800 text-xs">
+                          Lembar Butir Jawaban Siswa (50 Pertanyaan)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <button
+                          onClick={() => setItemFilter('ALL')}
+                          className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                            itemFilter === 'ALL'
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                          }`}
+                        >
+                          Semua (50)
+                        </button>
+                        <button
+                          onClick={() => setItemFilter('YES')}
+                          className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                            itemFilter === 'YES'
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                          }`}
+                        >
+                          Jawaban "YA" ({kelasXData.categoryAnalysis.total_yes})
+                        </button>
+                        <button
+                          onClick={() => setItemFilter('NO')}
+                          className={`px-2.5 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                            itemFilter === 'NO'
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                          }`}
+                        >
+                          Jawaban "TIDAK" ({50 - kelasXData.categoryAnalysis.total_yes})
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 text-xs">
+                      {db
+                        .getQuestions()
+                        .filter((q) => q.questionnaire_type_id === kelasXData.type?.id)
+                        .filter((q) => {
+                          const qNum = String(q.question_number);
+                          const answers = db.getAnswers();
+                          const ans = answers.find(
+                            (a) =>
+                              (a.response_id === kelasXData.response.id ||
+                                a.response_id === student.id ||
+                                a.response_id.includes(student.id)) &&
+                              (a.question_id === q.id ||
+                                a.question_id === qNum ||
+                                a.question_id.endsWith(`-${qNum}`) ||
+                                a.question_id.endsWith(`_${qNum}`))
+                          );
+                          const code = String(ans?.selected_option_code || '').trim().toUpperCase();
+                          const isYes =
+                            (ans && ans.score_value > 0) ||
+                            code === 'YA' ||
+                            code === 'Y' ||
+                            code === '1' ||
+                            code === 'A';
+                          if (itemFilter === 'YES') return isYes;
+                          if (itemFilter === 'NO') return !isYes;
+                          return true;
+                        })
+                        .map((q) => {
+                          const qNum = String(q.question_number);
+                          const answers = db.getAnswers();
+                          const ans = answers.find(
+                            (a) =>
+                              (a.response_id === kelasXData.response.id ||
+                                a.response_id === student.id ||
+                                a.response_id.includes(student.id)) &&
+                              (a.question_id === q.id ||
+                                a.question_id === qNum ||
+                                a.question_id.endsWith(`-${qNum}`) ||
+                                a.question_id.endsWith(`_${qNum}`))
+                          );
+                          const code = String(ans?.selected_option_code || '').trim().toUpperCase();
+                          const isYes =
+                            (ans && ans.score_value > 0) ||
+                            code === 'YA' ||
+                            code === 'Y' ||
+                            code === '1' ||
+                            code === 'A';
+                          const cat = db.getCategories().find((c) => c.id === q.category_id);
+
+                          return (
+                            <div
+                              key={q.id}
+                              className={`p-2.5 flex items-start justify-between gap-3 ${
+                                isYes ? 'bg-rose-50/50' : 'hover:bg-slate-50/50'
+                              }`}
+                            >
+                              <div className="flex items-start gap-2.5 min-w-0">
+                                <span className="font-bold text-slate-500 shrink-0 w-6">
+                                  #{q.question_number}
+                                </span>
+                                <div>
+                                  <p className="text-slate-800 leading-snug">{q.statement}</p>
+                                  <span className="inline-block mt-0.5 text-[10px] text-slate-400">
+                                    {cat?.name || 'Umum'}
+                                  </span>
+                                </div>
+                              </div>
+                              <span
+                                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                                  isYes
+                                    ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                    : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                }`}
+                              >
+                                {isYes ? 'YA (Kendala)' : 'TIDAK'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
 
                   {/* Actions: Re-Open and Reset for Kelas X */}

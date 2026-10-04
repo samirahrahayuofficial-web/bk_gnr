@@ -57,9 +57,29 @@ export class ScoringService {
 
       let answeredYes = 0;
       catQuestions.forEach((q) => {
-        const ans = answers.find((a) => a.question_id === q.id);
-        if (ans && (ans.selected_option_code === 'YA' || ans.score_value > 0)) {
-          answeredYes++;
+        const qNum = String(q.question_number);
+        const ans = answers.find((a) => {
+          if (!a) return false;
+          if (a.question_id === q.id) return true;
+          if (a.question_id === qNum) return true;
+          if (a.question_id.endsWith(`-${qNum}`)) return true;
+          if (a.question_id.endsWith(`_${qNum}`)) return true;
+          return false;
+        });
+
+        if (ans) {
+          const code = String(ans.selected_option_code || '').trim().toUpperCase();
+          if (
+            ans.score_value > 0 ||
+            code === 'YA' ||
+            code === 'Y' ||
+            code === '1' ||
+            code === 'TRUE' ||
+            code === 'A' ||
+            code === 'SETUJU'
+          ) {
+            answeredYes++;
+          }
         }
       });
 
@@ -79,9 +99,33 @@ export class ScoringService {
     });
 
     const totalQuestions = questions.length;
-    const totalYes = answers.filter(
-      (a) => a.selected_option_code === 'YA' || a.score_value > 0
-    ).length;
+    let totalYes = 0;
+    questions.forEach((q) => {
+      const qNum = String(q.question_number);
+      const ans = answers.find((a) => {
+        if (!a) return false;
+        if (a.question_id === q.id) return true;
+        if (a.question_id === qNum) return true;
+        if (a.question_id.endsWith(`-${qNum}`)) return true;
+        if (a.question_id.endsWith(`_${qNum}`)) return true;
+        return false;
+      });
+
+      if (ans) {
+        const code = String(ans.selected_option_code || '').trim().toUpperCase();
+        if (
+          ans.score_value > 0 ||
+          code === 'YA' ||
+          code === 'Y' ||
+          code === '1' ||
+          code === 'TRUE' ||
+          code === 'A' ||
+          code === 'SETUJU'
+        ) {
+          totalYes++;
+        }
+      }
+    });
     const overallPercentage =
       totalQuestions > 0 ? Math.round((totalYes / totalQuestions) * 100) : 0;
 
