@@ -1,0 +1,95 @@
+import { StudyProgram, ClassRoom } from '../types/database';
+
+export const initialStudyPrograms: StudyProgram[] = [
+  {
+    id: 'prog-to',
+    code: 'TO',
+    name: 'Teknik Otomotif',
+    description: 'Program Keahlian Teknik Otomotif / Kendaraan Ringan',
+  },
+  {
+    id: 'prog-tsm',
+    code: 'TSM',
+    name: 'Teknik Sepeda Motor',
+    description: 'Program Keahlian Teknik dan Bisnis Sepeda Motor',
+  },
+  {
+    id: 'prog-mesin',
+    code: 'MESIN',
+    name: 'Teknik Pemesinan',
+    description: 'Program Keahlian Teknik Pemesinan dan Manufaktur',
+  },
+  {
+    id: 'prog-dpib',
+    code: 'DPIB',
+    name: 'Desain Pemodelan dan Informasi Bangunan',
+    description: 'Program Keahlian Desain Arsitektur dan Konstruksi Bangunan',
+  },
+  {
+    id: 'prog-tjkt',
+    code: 'TJKT',
+    name: 'Teknik Jaringan Komputer dan Telekomunikasi',
+    description: 'Program Keahlian Teknik Jaringan Komputer dan Telekomunikasi',
+  },
+  {
+    id: 'prog-dkv',
+    code: 'DKV',
+    name: 'Desain Komunikasi Visual',
+    description: 'Program Keahlian Desain Grafis, Multimedia, dan Komunikasi Visual',
+  },
+];
+
+export const initialClasses: ClassRoom[] = [
+  // Kelas X
+  { id: 'cls-x-to-1', name: 'X TO 1', grade: 'X', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Yuliana Siti Rukmana, S.Pd.,Gr' },
+  { id: 'cls-x-to-2', name: 'X TO 2', grade: 'X', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Tukimin, S.Pd' },
+  { id: 'cls-x-to-3', name: 'X TO 3', grade: 'X', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Awal Saputra, S.T. Gr' },
+  { id: 'cls-x-tsm-1', name: 'X TSM 1', grade: 'X', study_program_id: 'prog-tsm', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Lismawati, S.Pd. Gr' },
+  { id: 'cls-x-tsm-2', name: 'X TSM 2', grade: 'X', study_program_id: 'prog-tsm', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Muhamad Zaki, S.T.' },
+  { id: 'cls-x-tjkt-1', name: 'X TJKT 1', grade: 'X', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Yosep Destiawan, S.Kom.' },
+  { id: 'cls-x-tjkt-2', name: 'X TJKT 2', grade: 'X', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Candra Ardiyanto, S.Pd., Gr.' },
+  { id: 'cls-x-tjkt-3', name: 'X TJKT 3', grade: 'X', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Derry Pernadi, S.Pd., S.T.' },
+  { id: 'cls-x-dpib-1', name: 'X DPIB 1', grade: 'X', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Ine Tri Indriyani, S.Pd.' },
+  { id: 'cls-x-dpib-2', name: 'X DPIB 2', grade: 'X', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Andis Ruhyat Tambunan, S.Pd' },
+  { id: 'cls-x-dpib-3', name: 'X DPIB 3', grade: 'X', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Satria Mutaqin, S.T' },
+  { id: 'cls-x-mesin-1', name: 'X MESIN 1', grade: 'X', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Risdiawati, S.Pd.' },
+  { id: 'cls-x-mesin-2', name: 'X MESIN 2', grade: 'X', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Hendra Gunawan, S.Pd.' },
+  { id: 'cls-x-mesin-3', name: 'X MESIN 3', grade: 'X', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Andi Maulana, S.Pd.I.' },
+  { id: 'cls-x-dkv-1', name: 'X DKV 1', grade: 'X', study_program_id: 'prog-dkv', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Nova Puspanita, S.Pd., Gr' },
+  { id: 'cls-x-dkv-2', name: 'X DKV 2', grade: 'X', study_program_id: 'prog-dkv', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Sindri Nurrafi, S.Pd., M.Pd., Gr.' },
+
+  // Kelas XI
+  { id: 'cls-xi-to-1', name: 'XI TO 1', grade: 'XI', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Rudi Iskandar, S.Pd.' },
+  { id: 'cls-xi-to-2', name: 'XI TO 2', grade: 'XI', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Viktor Herlambang, S.T.' },
+  { id: 'cls-xi-to-3', name: 'XI TO 3', grade: 'XI', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Siti Syarifah, S.Pd.' },
+  { id: 'cls-xi-tsm-1', name: 'XI TSM 1', grade: 'XI', study_program_id: 'prog-tsm', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Elmi Mulyani, S.Pd.' },
+  { id: 'cls-xi-tsm-2', name: 'XI TSM 2', grade: 'XI', study_program_id: 'prog-tsm', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Dedi Sutisna, S.Pd.I.' },
+  { id: 'cls-xi-tjkt-1', name: 'XI TJKT 1', grade: 'XI', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Ismatullah, S.Pd.I' },
+  { id: 'cls-xi-tjkt-2', name: 'XI TJKT 2', grade: 'XI', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Sandy Wiguna A, S.S.T' },
+  { id: 'cls-xi-tjkt-3', name: 'XI TJKT 3', grade: 'XI', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Enjang Lukman, S.Kom.' },
+  { id: 'cls-xi-dpib-1', name: 'XI DPIB 1', grade: 'XI', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Pratiwi Ayudia, S.Sos.' },
+  { id: 'cls-xi-dpib-2', name: 'XI DPIB 2', grade: 'XI', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Nova Maryania, S.Pd.' },
+  { id: 'cls-xi-dpib-3', name: 'XI DPIB 3', grade: 'XI', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Dewi Nurani, S.Pd.' },
+  { id: 'cls-xi-mesin-1', name: 'XI MESIN 1', grade: 'XI', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Dede Nendriasyah, S.S.T.' },
+  { id: 'cls-xi-mesin-2', name: 'XI MESIN 2', grade: 'XI', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Entis, S.Pd.' },
+  { id: 'cls-xi-mesin-3', name: 'XI MESIN 3', grade: 'XI', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Putri Ayu Lestari, S.Pd. Gr' },
+  { id: 'cls-xi-dkv-1', name: 'XI DKV 1', grade: 'XI', study_program_id: 'prog-dkv', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Ega Elsa Roshadi, S.Sn.' },
+  { id: 'cls-xi-dkv-2', name: 'XI DKV 2', grade: 'XI', study_program_id: 'prog-dkv', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Rulli Hasbullah S, S.Kom.' },
+
+  // Kelas XII
+  { id: 'cls-xii-to-1', name: 'XII TO 1', grade: 'XII', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Fatria Cahya Ramadhan, S.Pd., M.Pd.' },
+  { id: 'cls-xii-to-2', name: 'XII TO 2', grade: 'XII', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Gina Restiyana, S.Pd' },
+  { id: 'cls-xii-to-3', name: 'XII TO 3', grade: 'XII', study_program_id: 'prog-to', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Rena Priningsih, S.Pd., S.Ag.' },
+  { id: 'cls-xii-tsm-1', name: 'XII TSM 1', grade: 'XII', study_program_id: 'prog-tsm', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Aditia Dwi Cahyani, S.Pd.' },
+  { id: 'cls-xii-tsm-2', name: 'XII TSM 2', grade: 'XII', study_program_id: 'prog-tsm', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Noer Salamah, S.Pd.' },
+  { id: 'cls-xii-mesin-1', name: 'XII MESIN 1', grade: 'XII', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Muhammad Prima S, S.Pd.' },
+  { id: 'cls-xii-mesin-2', name: 'XII MESIN 2', grade: 'XII', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Panji Andaistian, S.ST., Gr.' },
+  { id: 'cls-xii-mesin-3', name: 'XII MESIN 3', grade: 'XII', study_program_id: 'prog-mesin', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Alfian Juliansyah, S.Pd.' },
+  { id: 'cls-xii-dpib-1', name: 'XII DPIB 1', grade: 'XII', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Nisrina Q. El Yusuf, S.Pd.' },
+  { id: 'cls-xii-dpib-2', name: 'XII DPIB 2', grade: 'XII', study_program_id: 'prog-dpib', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Moch. Noordian Anwar, S.Pd.' },
+  { id: 'cls-xii-tjkt-1', name: 'XII TJKT 1', grade: 'XII', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Meliawati, S.S.' },
+  { id: 'cls-xii-tjkt-2', name: 'XII TJKT 2', grade: 'XII', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Dadan Hamdan, S.T.' },
+  { id: 'cls-xii-tjkt-3', name: 'XII TJKT 3', grade: 'XII', study_program_id: 'prog-tjkt', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Irma Nuryanti, S.Pd., Gr.' },
+  { id: 'cls-xii-dkv-1', name: 'XII DKV 1', grade: 'XII', study_program_id: 'prog-dkv', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Wahyu Haryadi, S.Pd., Gr.' },
+  { id: 'cls-xii-dkv-2', name: 'XII DKV 2', grade: 'XII', study_program_id: 'prog-dkv', academic_year_id: 'ay-2024-ganjil', homeroom_teacher: 'Anas Nasrudin, S.Pd.' },
+];

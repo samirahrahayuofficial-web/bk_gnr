@@ -1,0 +1,6 @@
+{
+  "name": "Sistem Informasi Bimbingan dan Konseling Sekolah (SIBKS)",
+  "description": "Aplikasi Bimbingan dan Konseling Sekolah untuk pengelolaan data siswa, angket kebutuhan siswa (AKPD & Kelas X), pemetaan minat karier BMW, analisis kebutuhan, dan tindak lanjut layanan BK.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
