@@ -32,10 +32,42 @@ export class CloudSyncService {
   private static isInitialized = false;
   private static unsubscribers: (() => void)[] = [];
   public static isConnected = false;
+  public static isQuotaExceeded = false;
   public static lastSyncedAt: string | null = null;
 
+  private static isQuotaError(err: any): boolean {
+    if (!err) return false;
+    const msg = err.message || String(err);
+    return (
+      err.code === 'resource-exhausted' ||
+      msg.includes('Quota exceeded') ||
+      msg.includes('RESOURCE_EXHAUSTED') ||
+      msg.includes('quota')
+    );
+  }
+
+  private static handleListenerError(name: string, err: any) {
+    if (this.isQuotaError(err)) {
+      if (!this.isQuotaExceeded) {
+        this.isQuotaExceeded = true;
+        console.warn(
+          `[SIBKS CloudSync] Kuota Firestore tercapai. Sistem beralih ke mode offline lokal (localStorage) dengan data lengkap.`
+        );
+        // Clean up listeners to prevent continuous quota error spam
+        this.unsubscribers.forEach((unsub) => {
+          try {
+            unsub();
+          } catch {}
+        });
+        this.unsubscribers = [];
+      }
+    } else {
+      console.warn(`[SIBKS CloudSync] ${name} sync warning:`, err?.message || err);
+    }
+  }
+
   public static async initCloudSync(onSyncCallback?: () => void): Promise<void> {
-    if (this.isInitialized) return;
+    if (this.isInitialized || this.isQuotaExceeded) return;
     this.isInitialized = true;
 
     try {
@@ -54,14 +86,13 @@ export class CloudSyncService {
               window.dispatchEvent(new CustomEvent('sibks_data_synced'));
             }
           } else {
-            // First time seed settings to cloud
             const local = JSON.parse(localStorage.getItem('sibks_settings_v2') || '{}');
             if (local.school_name) {
               this.syncSettingsToCloud(local);
             }
           }
         },
-        (err) => console.error('Settings listener error:', err)
+        (err) => this.handleListenerError('Settings', err)
       );
       this.unsubscribers.push(unsubSettings);
 
@@ -80,14 +111,13 @@ export class CloudSyncService {
             if (onSyncCallback) onSyncCallback();
             window.dispatchEvent(new CustomEvent('sibks_data_synced'));
           } else {
-            // Seed local users to cloud if empty
             const local = JSON.parse(localStorage.getItem('sibks_users_v2') || '[]');
             if (local.length > 0) {
               this.syncAllUsersToCloud(local);
             }
           }
         },
-        (err) => console.error('Users listener error:', err)
+        (err) => this.handleListenerError('Users', err)
       );
       this.unsubscribers.push(unsubUsers);
 
@@ -107,7 +137,7 @@ export class CloudSyncService {
             window.dispatchEvent(new CustomEvent('sibks_data_synced'));
           }
         },
-        (err) => console.error('Teachers listener error:', err)
+        (err) => this.handleListenerError('Teachers', err)
       );
       this.unsubscribers.push(unsubTeachers);
 
@@ -126,14 +156,13 @@ export class CloudSyncService {
             if (onSyncCallback) onSyncCallback();
             window.dispatchEvent(new CustomEvent('sibks_data_synced'));
           } else {
-            // First time seed academic years to cloud
             const local = JSON.parse(localStorage.getItem('sibks_academic_years_v2') || '[]');
             if (local.length > 0) {
               this.syncAllAcademicYearsToCloud(local);
             }
           }
         },
-        (err) => console.error('Academic years listener error:', err)
+        (err) => this.handleListenerError('Academic years', err)
       );
       this.unsubscribers.push(unsubAy);
 
@@ -149,11 +178,13 @@ export class CloudSyncService {
               if (data && data.id) cloudStudents.push(data);
             });
           }
-          localStorage.setItem('sibks_students_v2', JSON.stringify(cloudStudents));
-          if (onSyncCallback) onSyncCallback();
-          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          if (cloudStudents.length > 0) {
+            localStorage.setItem('sibks_students_v2', JSON.stringify(cloudStudents));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          }
         },
-        (err) => console.error('Students listener error:', err)
+        (err) => this.handleListenerError('Students', err)
       );
       this.unsubscribers.push(unsubStudents);
 
@@ -178,7 +209,7 @@ export class CloudSyncService {
             }
           }
         },
-        (err) => console.error('Classes listener error:', err)
+        (err) => this.handleListenerError('Classes', err)
       );
       this.unsubscribers.push(unsubClasses);
 
@@ -198,7 +229,7 @@ export class CloudSyncService {
             window.dispatchEvent(new CustomEvent('sibks_data_synced'));
           }
         },
-        (err) => console.error('Programs listener error:', err)
+        (err) => this.handleListenerError('Programs', err)
       );
       this.unsubscribers.push(unsubPrograms);
 
@@ -218,7 +249,7 @@ export class CloudSyncService {
             window.dispatchEvent(new CustomEvent('sibks_data_synced'));
           }
         },
-        (err) => console.error('Assignments listener error:', err)
+        (err) => this.handleListenerError('Assignments', err)
       );
       this.unsubscribers.push(unsubAssignments);
 
@@ -238,16 +269,13 @@ export class CloudSyncService {
             }
           });
 
-          // Non-destructive merge: preserve local drafts and newer responses
+          // Non-destructive merge
           const localResponses: QuestionnaireResponse[] = JSON.parse(
             localStorage.getItem('sibks_responses_v2') || '[]'
           );
           const responseMap = new Map<string, QuestionnaireResponse>();
-          
-          // Seed with cloud responses
           cloudResponses.forEach((r) => responseMap.set(r.id, r));
 
-          // Retain local responses that are drafts or newer than cloud
           localResponses.forEach((lr) => {
             const cr = responseMap.get(lr.id);
             if (!cr) {
@@ -265,7 +293,7 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (err) => console.error('Responses listener error:', err)
+        (err) => this.handleListenerError('Responses', err)
       );
       this.unsubscribers.push(unsubResponses);
 
@@ -282,7 +310,6 @@ export class CloudSyncService {
             }
           });
 
-          // Non-destructive merge for answers
           const localAnswers: QuestionnaireAnswer[] = JSON.parse(
             localStorage.getItem('sibks_answers_v2') || '[]'
           );
@@ -300,7 +327,7 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (err) => console.error('Answers listener error:', err)
+        (err) => this.handleListenerError('Answers', err)
       );
       this.unsubscribers.push(unsubAnswers);
 
@@ -324,7 +351,7 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (err) => console.error('Follow_ups listener error:', err)
+        (err) => this.handleListenerError('Follow_ups', err)
       );
       this.unsubscribers.push(unsubFollowUps);
 
@@ -348,7 +375,7 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (err) => console.error('Counseling_notes listener error:', err)
+        (err) => this.handleListenerError('Counseling_notes', err)
       );
       this.unsubscribers.push(unsubNotes);
 
@@ -366,7 +393,6 @@ export class CloudSyncService {
           });
 
           if (!snapshot.empty) {
-            // Sort by timestamp desc
             cloudList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
             localStorage.setItem('sibks_audit_logs_v2', JSON.stringify(cloudList));
           }
@@ -374,13 +400,13 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (err) => console.error('Audit_logs listener error:', err)
+        (err) => this.handleListenerError('Audit_logs', err)
       );
       this.unsubscribers.push(unsubAudit);
 
       console.log('SIBKS Multi-Device Cloud Firestore Synchronizer Active and Connected!');
     } catch (err) {
-      console.error('Failed to initialize cloud sync listeners', err);
+      this.handleListenerError('InitSync', err);
     }
   }
 
