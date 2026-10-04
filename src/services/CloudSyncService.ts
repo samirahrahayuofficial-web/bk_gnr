@@ -18,6 +18,8 @@ import {
   ClassRoom,
   StudyProgram,
   SystemSettings,
+  AcademicYear,
+  QuestionnaireAssignment,
 } from '../types/database';
 
 export class CloudSyncService {
@@ -31,7 +33,119 @@ export class CloudSyncService {
     this.isInitialized = true;
 
     try {
-      // 1. Setup real-time listener for Responses (Hasil Pengisian Siswa)
+      // 1. Settings (Tahun Ajar Aktif, Info Sekolah, Ambang Batas)
+      const settingsDoc = doc(firestore, 'settings', 'main');
+      const unsubSettings = onSnapshot(
+        settingsDoc,
+        (snap) => {
+          this.isConnected = true;
+          this.lastSyncedAt = new Date().toISOString();
+          if (snap.exists()) {
+            const data = snap.data() as SystemSettings;
+            if (data && data.school_name) {
+              localStorage.setItem('sibks_settings_v2', JSON.stringify(data));
+              if (onSyncCallback) onSyncCallback();
+              window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+            }
+          } else {
+            // First time seed settings to cloud
+            const local = JSON.parse(localStorage.getItem('sibks_settings_v2') || '{}');
+            if (local.school_name) {
+              this.syncSettingsToCloud(local);
+            }
+          }
+        },
+        (err) => console.error('Settings listener error:', err)
+      );
+      this.unsubscribers.push(unsubSettings);
+
+      // 2. Academic Years (Daftar Tahun Ajaran)
+      const ayCol = collection(firestore, 'academic_years');
+      const unsubAy = onSnapshot(
+        ayCol,
+        (snap) => {
+          if (!snap.empty) {
+            const cloudAy: AcademicYear[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as AcademicYear;
+              if (data && data.id) cloudAy.push(data);
+            });
+            localStorage.setItem('sibks_academic_years_v2', JSON.stringify(cloudAy));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          } else {
+            // First time seed academic years to cloud
+            const local = JSON.parse(localStorage.getItem('sibks_academic_years_v2') || '[]');
+            if (local.length > 0) {
+              this.syncAllAcademicYearsToCloud(local);
+            }
+          }
+        },
+        (err) => console.error('Academic years listener error:', err)
+      );
+      this.unsubscribers.push(unsubAy);
+
+      // 3. Students (Data Siswa)
+      const studentsCol = collection(firestore, 'students');
+      const unsubStudents = onSnapshot(
+        studentsCol,
+        (snap) => {
+          if (!snap.empty) {
+            const cloudStudents: Student[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as Student;
+              if (data && data.id) cloudStudents.push(data);
+            });
+            localStorage.setItem('sibks_students_v2', JSON.stringify(cloudStudents));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          }
+        },
+        (err) => console.error('Students listener error:', err)
+      );
+      this.unsubscribers.push(unsubStudents);
+
+      // 4. Classes (Data Rombel Kelas)
+      const classesCol = collection(firestore, 'classes');
+      const unsubClasses = onSnapshot(
+        classesCol,
+        (snap) => {
+          if (!snap.empty) {
+            const cloudClasses: ClassRoom[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as ClassRoom;
+              if (data && data.id) cloudClasses.push(data);
+            });
+            localStorage.setItem('sibks_classes_v2', JSON.stringify(cloudClasses));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          }
+        },
+        (err) => console.error('Classes listener error:', err)
+      );
+      this.unsubscribers.push(unsubClasses);
+
+      // 5. Study Programs (Program Keahlian)
+      const programsCol = collection(firestore, 'programs');
+      const unsubPrograms = onSnapshot(
+        programsCol,
+        (snap) => {
+          if (!snap.empty) {
+            const cloudPrograms: StudyProgram[] = [];
+            snap.forEach((d) => {
+              const data = d.data() as StudyProgram;
+              if (data && data.id) cloudPrograms.push(data);
+            });
+            localStorage.setItem('sibks_programs_v2', JSON.stringify(cloudPrograms));
+            if (onSyncCallback) onSyncCallback();
+            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+          }
+        },
+        (err) => console.error('Programs listener error:', err)
+      );
+      this.unsubscribers.push(unsubPrograms);
+
+      // 6. Responses (Hasil Pengisian Siswa)
       const responsesCol = collection(firestore, 'responses');
       const unsubResponses = onSnapshot(
         responsesCol,
@@ -47,29 +161,18 @@ export class CloudSyncService {
             }
           });
 
-          // Always set local storage to mirror Cloud Firestore authoritative data
-          // if cloud has items, or if synced before
           if (!snapshot.empty) {
             localStorage.setItem('sibks_responses_v2', JSON.stringify(cloudResponses));
-          } else {
-            // Check if we have local submitted responses to push to clean cloud
-            const local = JSON.parse(localStorage.getItem('sibks_responses_v2') || '[]') as QuestionnaireResponse[];
-            if (local.length > 0 && !localStorage.getItem('sibks_cloud_seeded_v3')) {
-              this.pushInitialLocalResponsesToCloud();
-              localStorage.setItem('sibks_cloud_seeded_v3', 'true');
-            }
           }
 
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (error) => {
-          console.error('Firestore responses listener error:', error);
-        }
+        (err) => console.error('Responses listener error:', err)
       );
       this.unsubscribers.push(unsubResponses);
 
-      // 2. Setup real-time listener for Answers (Jawaban Butir Siswa)
+      // 7. Answers (Jawaban Butir Siswa)
       const answersCol = collection(firestore, 'answers');
       const unsubAnswers = onSnapshot(
         answersCol,
@@ -89,13 +192,11 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (error) => {
-          console.error('Firestore answers listener error:', error);
-        }
+        (err) => console.error('Answers listener error:', err)
       );
       this.unsubscribers.push(unsubAnswers);
 
-      // 3. Setup real-time listener for Follow-ups (Tindak Lanjut BK)
+      // 8. Follow-ups (Tindak Lanjut BK)
       const followUpsCol = collection(firestore, 'follow_ups');
       const unsubFollowUps = onSnapshot(
         followUpsCol,
@@ -115,13 +216,11 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (error) => {
-          console.error('Firestore follow_ups listener error:', error);
-        }
+        (err) => console.error('Follow_ups listener error:', err)
       );
       this.unsubscribers.push(unsubFollowUps);
 
-      // 4. Setup real-time listener for Counseling Notes (Catatan Konseling)
+      // 9. Counseling Notes (Catatan Konseling)
       const notesCol = collection(firestore, 'counseling_notes');
       const unsubNotes = onSnapshot(
         notesCol,
@@ -141,9 +240,7 @@ export class CloudSyncService {
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
-        (error) => {
-          console.error('Firestore notes listener error:', error);
-        }
+        (err) => console.error('Counseling_notes listener error:', err)
       );
       this.unsubscribers.push(unsubNotes);
 
@@ -153,7 +250,145 @@ export class CloudSyncService {
     }
   }
 
-  // Push individual response to Firestore
+  // --- SETTINGS SYNC ---
+  public static async syncSettingsToCloud(settings: SystemSettings): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'settings', 'main');
+      await setDoc(docRef, settings, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync settings to cloud', e);
+    }
+  }
+
+  // --- ACADEMIC YEARS SYNC ---
+  public static async syncAcademicYearToCloud(ay: AcademicYear): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'academic_years', ay.id);
+      await setDoc(docRef, ay, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync academic year to cloud', e);
+    }
+  }
+
+  public static async syncAllAcademicYearsToCloud(list: AcademicYear[]): Promise<void> {
+    if (!list || list.length === 0) return;
+    try {
+      const batch = writeBatch(firestore);
+      list.forEach((ay) => {
+        const docRef = doc(firestore, 'academic_years', ay.id);
+        batch.set(docRef, ay, { merge: true });
+      });
+      await batch.commit();
+    } catch (e) {
+      console.error('Failed to sync all academic years to cloud', e);
+    }
+  }
+
+  public static async deleteAcademicYearFromCloud(id: string): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'academic_years', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error('Failed to delete academic year from cloud', e);
+    }
+  }
+
+  // --- STUDENTS SYNC ---
+  public static async syncStudentToCloud(student: Student): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'students', student.id);
+      await setDoc(docRef, student, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync student to cloud', e);
+    }
+  }
+
+  public static async deleteStudentFromCloud(id: string): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'students', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error('Failed to delete student from cloud', e);
+    }
+  }
+
+  // --- CLASSES SYNC ---
+  public static async syncClassToCloud(cls: ClassRoom): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'classes', cls.id);
+      await setDoc(docRef, cls, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync class to cloud', e);
+    }
+  }
+
+  public static async deleteClassFromCloud(id: string): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'classes', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error('Failed to delete class from cloud', e);
+    }
+  }
+
+  // --- STUDY PROGRAMS SYNC ---
+  public static async syncProgramToCloud(prog: StudyProgram): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'programs', prog.id);
+      await setDoc(docRef, prog, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync program to cloud', e);
+    }
+  }
+
+  public static async deleteProgramFromCloud(id: string): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'programs', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error('Failed to delete program from cloud', e);
+    }
+  }
+
+  // --- USERS SYNC ---
+  public static async syncUserToCloud(user: User): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'users', user.id);
+      await setDoc(docRef, user, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync user to cloud', e);
+    }
+  }
+
+  public static async deleteUserFromCloud(id: string): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'users', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error('Failed to delete user from cloud', e);
+    }
+  }
+
+  // --- ASSIGNMENTS SYNC ---
+  public static async syncAssignmentToCloud(asg: QuestionnaireAssignment): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'assignments', asg.id);
+      await setDoc(docRef, asg, { merge: true });
+    } catch (e) {
+      console.error('Failed to sync assignment to cloud', e);
+    }
+  }
+
+  public static async deleteAssignmentFromCloud(id: string): Promise<void> {
+    try {
+      const docRef = doc(firestore, 'assignments', id);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.error('Failed to delete assignment from cloud', e);
+    }
+  }
+
+  // --- RESPONSES SYNC ---
   public static async syncResponseToCloud(resp: QuestionnaireResponse): Promise<void> {
     try {
       const docRef = doc(firestore, 'responses', resp.id);
@@ -163,7 +398,6 @@ export class CloudSyncService {
     }
   }
 
-  // Delete response from Firestore (for Reset)
   public static async deleteResponseFromCloud(responseId: string): Promise<void> {
     try {
       const docRef = doc(firestore, 'responses', responseId);
@@ -173,7 +407,7 @@ export class CloudSyncService {
     }
   }
 
-  // Sync answers to Firestore in batch
+  // --- ANSWERS SYNC ---
   public static async syncAnswersToCloud(answers: QuestionnaireAnswer[]): Promise<void> {
     if (!answers || answers.length === 0) return;
     try {
@@ -188,7 +422,6 @@ export class CloudSyncService {
     }
   }
 
-  // Delete answers from Firestore
   public static async deleteAnswersByResponseIdFromCloud(responseId: string): Promise<void> {
     try {
       const answersCol = collection(firestore, 'answers');
@@ -210,7 +443,7 @@ export class CloudSyncService {
     }
   }
 
-  // Sync FollowUp
+  // --- FOLLOW UPS SYNC ---
   public static async syncFollowUpToCloud(fu: FollowUp): Promise<void> {
     try {
       const docRef = doc(firestore, 'follow_ups', fu.id);
@@ -229,7 +462,7 @@ export class CloudSyncService {
     }
   }
 
-  // Sync Counseling Note
+  // --- COUNSELING NOTES SYNC ---
   public static async syncCounselingNoteToCloud(note: CounselingNote): Promise<void> {
     try {
       const docRef = doc(firestore, 'counseling_notes', note.id);
@@ -245,25 +478,6 @@ export class CloudSyncService {
       await deleteDoc(docRef);
     } catch (e) {
       console.error('Failed to delete counseling note from cloud', e);
-    }
-  }
-
-  // Helper to push initial local responses to cloud
-  private static async pushInitialLocalResponsesToCloud(): Promise<void> {
-    try {
-      const localResp = JSON.parse(localStorage.getItem('sibks_responses_v2') || '[]') as QuestionnaireResponse[];
-      const localAns = JSON.parse(localStorage.getItem('sibks_answers_v2') || '[]') as QuestionnaireAnswer[];
-
-      if (localResp.length > 0) {
-        for (const r of localResp) {
-          await this.syncResponseToCloud(r);
-        }
-      }
-      if (localAns.length > 0) {
-        await this.syncAnswersToCloud(localAns);
-      }
-    } catch (e) {
-      console.error('Failed to push initial local data to cloud', e);
     }
   }
 }

@@ -303,6 +303,7 @@ class RelationalDatabase {
   }
   public saveSettings(settings: SystemSettings): void {
     this.set(STORAGE_KEYS.SETTINGS, settings);
+    CloudSyncService.syncSettingsToCloud(settings);
   }
 
   // Users
@@ -315,10 +316,12 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = user;
     else list.push(user);
     this.set(STORAGE_KEYS.USERS, list);
+    CloudSyncService.syncUserToCloud(user);
   }
   public deleteUser(id: string): void {
     const list = this.getUsers().filter((u) => u.id !== id);
     this.set(STORAGE_KEYS.USERS, list);
+    CloudSyncService.deleteUserFromCloud(id);
   }
   public toggleUserStatus(id: string): boolean {
     const list = this.getUsers();
@@ -327,6 +330,7 @@ class RelationalDatabase {
       user.is_active = user.is_active === false ? true : false;
       user.updated_at = new Date().toISOString();
       this.set(STORAGE_KEYS.USERS, list);
+      CloudSyncService.syncUserToCloud(user);
       return user.is_active;
     }
     return false;
@@ -338,6 +342,7 @@ class RelationalDatabase {
       user.password = newPassword;
       user.updated_at = new Date().toISOString();
       this.set(STORAGE_KEYS.USERS, list);
+      CloudSyncService.syncUserToCloud(user);
       return true;
     }
     return false;
@@ -353,10 +358,12 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = student;
     else list.push(student);
     this.set(STORAGE_KEYS.STUDENTS, list);
+    CloudSyncService.syncStudentToCloud(student);
   }
   public deleteStudent(id: string): void {
     const list = this.getStudents().filter((s) => s.id !== id);
     this.set(STORAGE_KEYS.STUDENTS, list);
+    CloudSyncService.deleteStudentFromCloud(id);
   }
 
   // Teachers
@@ -381,10 +388,12 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = cls;
     else list.push(cls);
     this.set(STORAGE_KEYS.CLASSES, list);
+    CloudSyncService.syncClassToCloud(cls);
   }
   public deleteClass(id: string): void {
     const list = this.getClasses().filter((c) => c.id !== id);
     this.set(STORAGE_KEYS.CLASSES, list);
+    CloudSyncService.deleteClassFromCloud(id);
   }
 
   // Study Programs
@@ -397,10 +406,12 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = prog;
     else list.push(prog);
     this.set(STORAGE_KEYS.PROGRAMS, list);
+    CloudSyncService.syncProgramToCloud(prog);
   }
   public deleteProgram(id: string): void {
     const list = this.getPrograms().filter((p) => p.id !== id);
     this.set(STORAGE_KEYS.PROGRAMS, list);
+    CloudSyncService.deleteProgramFromCloud(id);
     // Also remove any classes associated with this program
     const classes = this.getClasses().filter((c) => c.study_program_id !== id);
     this.set(STORAGE_KEYS.CLASSES, classes);
@@ -420,6 +431,7 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = ay;
     else list.push(ay);
     this.set(STORAGE_KEYS.ACADEMIC_YEARS, list);
+    CloudSyncService.syncAcademicYearToCloud(ay);
   }
   public setActiveAcademicYear(id: string): void {
     const list = this.getAcademicYears();
@@ -433,6 +445,7 @@ class RelationalDatabase {
       }
     });
     this.set(STORAGE_KEYS.ACADEMIC_YEARS, list);
+    CloudSyncService.syncAllAcademicYearsToCloud(list);
 
     // Sync with settings.academic_year
     if (selectedAy) {
@@ -449,6 +462,7 @@ class RelationalDatabase {
     }
     const filtered = list.filter((a) => a.id !== id);
     this.set(STORAGE_KEYS.ACADEMIC_YEARS, filtered);
+    CloudSyncService.deleteAcademicYearFromCloud(id);
     return true;
   }
 

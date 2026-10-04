@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { Student } from '../../types/database';
 import { useNotification } from '../../context/NotificationContext';
@@ -26,6 +26,12 @@ export const MasterSiswa: React.FC = () => {
   const { showToast } = useNotification();
 
   const [students, setStudents] = useState<Student[]>(() => db.getStudents());
+
+  useEffect(() => {
+    const handleSync = () => setStudents(db.getStudents());
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<'ALL' | 'X' | 'XI' | 'XII'>('ALL');
   const [selectedProgram, setSelectedProgram] = useState<string>('ALL');

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { AcademicYear } from '../../types/database';
 import { useNotification } from '../../context/NotificationContext';
@@ -25,6 +25,12 @@ export const MasterTahunAjar: React.FC = () => {
   const { currentUser, role } = useAuth();
 
   const [academicYears, setAcademicYears] = useState<AcademicYear[]>(() => db.getAcademicYears());
+
+  useEffect(() => {
+    const handleSync = () => setAcademicYears(db.getAcademicYears());
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [semesterFilter, setSemesterFilter] = useState<'ALL' | 'Ganjil' | 'Genap'>('ALL');
 

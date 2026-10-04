@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 import { db } from '../../db/storage';
@@ -30,7 +30,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenAuditLogs,
   const { currentUser, role, switchRole, logout } = useAuth();
   const { showToast } = useNotification();
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
-  const settings = db.getSettings();
+  const [settings, setSettings] = useState(() => db.getSettings());
+
+  useEffect(() => {
+    const handleSync = () => setSettings(db.getSettings());
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
 
   const handleRoleSelect = (targetRole: UserRole, targetId?: string) => {
     switchRole(targetRole, targetId);
