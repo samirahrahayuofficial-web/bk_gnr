@@ -84,6 +84,12 @@ class RelationalDatabase {
   private set<T>(key: string, value: T): void {
     try {
       localStorage.setItem(key, JSON.stringify(value));
+      window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+      if (typeof BroadcastChannel !== 'undefined') {
+        const bc = new BroadcastChannel('sibks_realtime_channel');
+        bc.postMessage({ key, timestamp: Date.now() });
+        bc.close();
+      }
     } catch (e) {
       console.error('Failed to save to localStorage', e);
     }

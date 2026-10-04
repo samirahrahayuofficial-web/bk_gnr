@@ -91,6 +91,31 @@ const MainAppContent: React.FC = () => {
   // Initialize Firestore real-time synchronization across devices
   useEffect(() => {
     CloudSyncService.initCloudSync();
+
+    const handleStorageSync = () => {
+      window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+    };
+
+    window.addEventListener('storage', handleStorageSync);
+
+    let bc: BroadcastChannel | null = null;
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        bc = new BroadcastChannel('sibks_realtime_channel');
+        bc.onmessage = () => {
+          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+        };
+      } catch (e) {}
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageSync);
+      if (bc) {
+        try {
+          bc.close();
+        } catch (e) {}
+      }
+    };
   }, []);
 
   // Synchronize default menu when role or user changes

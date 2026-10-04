@@ -6,6 +6,7 @@ import { useNotification } from '../../context/NotificationContext';
 import {
   QuestionnaireQuestion,
   QuestionnaireOption,
+  QuestionnaireAnswer,
 } from '../../types/database';
 import {
   CheckCircle2,
@@ -297,6 +298,19 @@ export const QuestionnaireTaking: React.FC<QuestionnaireTakingProps> = ({
       activeRespId = existingResp.id;
       setResponseId(activeRespId);
     }
+
+    // Ensure all answers from answersMap are firmly persisted and attached to this response
+    const formattedAnswers: QuestionnaireAnswer[] = Object.entries(answersMap).map(([qId, val]) => ({
+      id: `ans-${activeRespId}-${qId}`,
+      response_id: activeRespId,
+      question_id: qId,
+      selected_option_code: val.optionCode,
+      score_value: val.scoreValue,
+      career_tag: val.careerTag,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }));
+    db.saveAnswers(activeRespId, formattedAnswers);
 
     const res = QuestionnaireService.submitResponse(
       activeRespId,
