@@ -42,7 +42,11 @@ export const BkDashboard: React.FC<BkDashboardProps> = ({ onNavigate }) => {
     const res = await CloudSyncService.pullAllDataFromCloud();
     setIsPulling(false);
     if (res.success) {
-      showToast('success', 'Sinkronisasi Cloud Berhasil', res.message);
+      if (res.isQuotaWarning) {
+        showToast('warning', 'Mode Database Lokal Aktif', res.message);
+      } else {
+        showToast('success', 'Sinkronisasi Cloud Berhasil', res.message);
+      }
     } else {
       showToast('error', 'Gagal Sinkronisasi', res.message);
     }

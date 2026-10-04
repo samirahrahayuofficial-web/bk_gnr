@@ -413,6 +413,7 @@ export class CloudSyncService {
   // --- MANUAL DIRECT PULL FROM CLOUD ---
   public static async pullAllDataFromCloud(): Promise<{
     success: boolean;
+    isQuotaWarning?: boolean;
     message: string;
     responsesCount: number;
     answersCount: number;
@@ -462,14 +463,27 @@ export class CloudSyncService {
 
       return {
         success: true,
-        message: `Berhasil menarik ${cloudResponses.length} respon dan ${cloudAnswers.length} jawaban dari Cloud Firestore.`,
+        isQuotaWarning: false,
+        message: `Berhasil menarik ${cloudResponses.length} respon dan ${cloudAnswers.length} butir jawaban dari Cloud Firestore.`,
         responsesCount: cloudResponses.length,
         answersCount: cloudAnswers.length,
       };
     } catch (e: any) {
-      console.error('Failed to pull all data from cloud:', e);
+      if (this.isQuotaError(e)) {
+        this.isQuotaExceeded = true;
+        const localResponses = JSON.parse(localStorage.getItem('sibks_responses_v2') || '[]');
+        const localAnswers = JSON.parse(localStorage.getItem('sibks_answers_v2') || '[]');
+        return {
+          success: true,
+          isQuotaWarning: true,
+          message: `Batas kuota harian Cloud Firestore tercapai (50.000 reads/hari). Sistem tetap aktif menggunakan database lokal (${localResponses.length} respon tersimpan). Kuota akan direset otomatis setiap tengah malam oleh Firebase.`,
+          responsesCount: localResponses.length,
+          answersCount: localAnswers.length,
+        };
+      }
       return {
         success: false,
+        isQuotaWarning: false,
         message: e?.message || 'Gagal menarik data dari cloud.',
         responsesCount: 0,
         answersCount: 0,
