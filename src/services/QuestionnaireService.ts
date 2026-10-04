@@ -226,6 +226,11 @@ export class QuestionnaireService {
     }
     response.updated_at = new Date().toISOString();
     db.saveResponse(response);
+    
+    // Explicitly guarantee all answers are synced to cloud on submission
+    if (answers.length > 0) {
+      db.saveAnswers(response.id, answers);
+    }
 
     return {
       success: true,

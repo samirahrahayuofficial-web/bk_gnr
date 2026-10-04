@@ -3,6 +3,7 @@ import {
   CareerResult,
   CategoryScoreResult,
   PriorityLevel,
+  Student,
   StudentAnalysis,
 } from '../types/database';
 import { CareerAnalysisService } from './CareerAnalysisService';
@@ -100,9 +101,18 @@ export class AnalysisService {
    * Get all analyses for a student
    */
   public static getStudentAnalyses(studentId: string) {
+    const student = db.getStudents().find((s) => s.id === studentId || s.nis === studentId);
+    const validIds = new Set<string>();
+    validIds.add(studentId);
+    if (student) {
+      validIds.add(student.id);
+      validIds.add(student.nis);
+      validIds.add(`std-${student.nis}`);
+    }
+
     const responses = db
       .getResponses()
-      .filter((r) => r.student_id === studentId && r.status === 'SUBMITTED');
+      .filter((r) => validIds.has(r.student_id) && r.status === 'SUBMITTED');
 
     const results = responses.map((r) => {
       const type = db.getQuestionnaireTypes().find((t) => t.id === r.questionnaire_type_id);
@@ -128,7 +138,12 @@ export class AnalysisService {
     if (!cls) return null;
 
     const students = db.getStudents().filter((s) => s.class_id === classId);
-    const studentIds = new Set(students.map((s) => s.id));
+    const studentIds = new Set<string>();
+    students.forEach((s) => {
+      studentIds.add(s.id);
+      studentIds.add(s.nis);
+      studentIds.add(`std-${s.nis}`);
+    });
 
     const responses = db.getResponses().filter(
       (r) =>
@@ -303,9 +318,25 @@ export class AnalysisService {
     const settings = db.getSettings();
 
     // Unique students who completed at least one questionnaire
-    const submittedStudentIds = new Set(submittedResponses.map((r) => r.student_id));
+    const studentIdToStudent = new Map<string, Student>();
+    students.forEach((s) => {
+      studentIdToStudent.set(s.id, s);
+      studentIdToStudent.set(s.nis, s);
+      studentIdToStudent.set(`std-${s.nis}`, s);
+    });
+
+    const completedStudentSet = new Set<string>();
+    submittedResponses.forEach((r) => {
+      const matched = studentIdToStudent.get(r.student_id);
+      if (matched) {
+        completedStudentSet.add(matched.id);
+      } else {
+        completedStudentSet.add(r.student_id);
+      }
+    });
+
     const totalStudents = students.length;
-    const completedStudentsCount = submittedStudentIds.size;
+    const completedStudentsCount = completedStudentSet.size;
     const pendingStudentsCount = Math.max(0, totalStudents - completedStudentsCount);
     const participationRate =
       totalStudents > 0 ? Math.round((completedStudentsCount / totalStudents) * 100) : 0;
@@ -317,9 +348,11 @@ export class AnalysisService {
       (f) => f.status === 'Belum Ditindaklanjuti' || f.status === 'Dalam Proses'
     ).length;
 
-    // Check priority for AKPD respondents
-    const akpdResponses = submittedResponses.filter((r) => r.questionnaire_type_id === 'qt-akpd');
-    akpdResponses.forEach((r) => {
+    // Check priority for AKPD & Kelas X respondents
+    const needAssessmentResponses = submittedResponses.filter(
+      (r) => r.questionnaire_type_id === 'qt-akpd' || r.questionnaire_type_id === 'qt-kelas-x'
+    );
+    needAssessmentResponses.forEach((r) => {
       const { categoryAnalysis } = this.calculateResponseAnalysis(r.id);
       if (
         categoryAnalysis &&
@@ -337,7 +370,7 @@ export class AnalysisService {
       'cat-akpd-karir': { totalPct: 0, count: 0, name: 'Karir & DUDI' },
     };
 
-    akpdResponses.forEach((r) => {
+    needAssessmentResponses.forEach((r) => {
       const { categoryAnalysis } = this.calculateResponseAnalysis(r.id);
       if (categoryAnalysis) {
         categoryAnalysis.category_results.forEach((cr) => {
