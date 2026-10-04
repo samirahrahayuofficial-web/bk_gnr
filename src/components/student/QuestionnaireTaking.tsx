@@ -61,10 +61,43 @@ export const QuestionnaireTaking: React.FC<QuestionnaireTakingProps> = ({
     : undefined;
   const studentGrade = studentClass?.grade || 'X';
 
+  // Draft Storage Key for instant persistent local saving
+  const draftKey = currentStudent ? `sibks_draft_${currentStudent.id}_${questionnaireTypeId}` : '';
+
   // Local answers state mapped by question_id -> { optionCode, scoreValue, careerTag }
   const [answersMap, setAnswersMap] = useState<
     Record<string, { optionCode: string; scoreValue: number; careerTag?: any }>
-  >({});
+  >(() => {
+    if (!currentStudent) return {};
+    const key = `sibks_draft_${currentStudent.id}_${questionnaireTypeId}`;
+    try {
+      const savedDraft = localStorage.getItem(key);
+      if (savedDraft) {
+        const parsed = JSON.parse(savedDraft);
+        if (parsed && Object.keys(parsed).length > 0) return parsed;
+      }
+    } catch (e) {}
+
+    const existingResp = db
+      .getResponses()
+      .find(
+        (r) =>
+          r.student_id === currentStudent.id && r.questionnaire_type_id === questionnaireTypeId
+      );
+    if (existingResp) {
+      const existingAnswers = db.getAnswers().filter((a) => a.response_id === existingResp.id);
+      const map: Record<string, { optionCode: string; scoreValue: number; careerTag?: any }> = {};
+      existingAnswers.forEach((a) => {
+        map[a.question_id] = {
+          optionCode: a.selected_option_code,
+          scoreValue: a.score_value,
+          careerTag: a.career_tag,
+        };
+      });
+      return map;
+    }
+    return {};
+  });
 
   // Specific state for Kelas XII BMW: Rencana Utama Pasca Lulus
   const [initialCareerChoice, setInitialCareerChoice] = useState<'BEKERJA' | 'KULIAH' | 'WIRAUSAHA' | undefined>(undefined);
@@ -84,7 +117,7 @@ export const QuestionnaireTaking: React.FC<QuestionnaireTakingProps> = ({
   const [currentPage, setCurrentPage] = useState<number>(1);
   const pageSize = 10;
 
-  // Load existing draft or submitted answers
+  // Load existing draft or submitted answers non-destructively
   useEffect(() => {
     if (!currentStudent || !type) return;
 
@@ -115,9 +148,20 @@ export const QuestionnaireTaking: React.FC<QuestionnaireTakingProps> = ({
           careerTag: a.career_tag,
         };
       });
-      setAnswersMap(map);
+
+      if (Object.keys(map).length > 0) {
+        setAnswersMap((prev) => {
+          const merged = { ...map, ...prev };
+          if (draftKey) {
+            try {
+              localStorage.setItem(draftKey, JSON.stringify(merged));
+            } catch (e) {}
+          }
+          return merged;
+        });
+      }
     }
-  }, [currentStudent, questionnaireTypeId, type]);
+  }, [currentStudent?.id, questionnaireTypeId]);
 
   if (!type || !currentStudent) return null;
 
@@ -165,23 +209,35 @@ export const QuestionnaireTaking: React.FC<QuestionnaireTakingProps> = ({
   ) => {
     if (isSubmitted && !canReedit) return;
 
-    // Update local state
-    setAnswersMap((prev) => ({
-      ...prev,
-      [question.id]: { optionCode, scoreValue, careerTag },
-    }));
+    // Instant update to React state and persistent local storage
+    setAnswersMap((prev) => {
+      const next = {
+        ...prev,
+        [question.id]: { optionCode, scoreValue, careerTag },
+      };
+      if (draftKey) {
+        try {
+          localStorage.setItem(draftKey, JSON.stringify(next));
+        } catch (e) {}
+      }
+      return next;
+    });
 
     // Auto save to database in background
-    const resp = QuestionnaireService.saveAnswer(
-      currentStudent.id,
-      questionnaireTypeId,
-      question.id,
-      optionCode,
-      scoreValue,
-      careerTag
-    );
-    if (!responseId && resp) {
-      setResponseId(resp.id);
+    try {
+      const resp = QuestionnaireService.saveAnswer(
+        currentStudent.id,
+        questionnaireTypeId,
+        question.id,
+        optionCode,
+        scoreValue,
+        careerTag
+      );
+      if (!responseId && resp) {
+        setResponseId(resp.id);
+      }
+    } catch (e) {
+      console.error('Failed to auto-save answer:', e);
     }
 
     // Remove from missing if answered
@@ -256,6 +312,12 @@ export const QuestionnaireTaking: React.FC<QuestionnaireTakingProps> = ({
 
     setIsSubmitted(true);
     setCanReedit(false);
+
+    if (draftKey) {
+      try {
+        localStorage.removeItem(draftKey);
+      } catch (e) {}
+    }
 
     try {
       confetti({

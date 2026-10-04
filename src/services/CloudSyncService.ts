@@ -238,9 +238,29 @@ export class CloudSyncService {
             }
           });
 
-          if (!snapshot.empty) {
-            localStorage.setItem('sibks_responses_v2', JSON.stringify(cloudResponses));
-          }
+          // Non-destructive merge: preserve local drafts and newer responses
+          const localResponses: QuestionnaireResponse[] = JSON.parse(
+            localStorage.getItem('sibks_responses_v2') || '[]'
+          );
+          const responseMap = new Map<string, QuestionnaireResponse>();
+          
+          // Seed with cloud responses
+          cloudResponses.forEach((r) => responseMap.set(r.id, r));
+
+          // Retain local responses that are drafts or newer than cloud
+          localResponses.forEach((lr) => {
+            const cr = responseMap.get(lr.id);
+            if (!cr) {
+              responseMap.set(lr.id, lr);
+            } else if (lr.status === 'DRAFT' && cr.status !== 'SUBMITTED') {
+              responseMap.set(lr.id, lr);
+            }
+          });
+
+          localStorage.setItem(
+            'sibks_responses_v2',
+            JSON.stringify(Array.from(responseMap.values()))
+          );
 
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
@@ -262,9 +282,20 @@ export class CloudSyncService {
             }
           });
 
-          if (!snapshot.empty) {
-            localStorage.setItem('sibks_answers_v2', JSON.stringify(cloudAnswers));
-          }
+          // Non-destructive merge for answers
+          const localAnswers: QuestionnaireAnswer[] = JSON.parse(
+            localStorage.getItem('sibks_answers_v2') || '[]'
+          );
+          const answerMap = new Map<string, QuestionnaireAnswer>();
+
+          cloudAnswers.forEach((a) => answerMap.set(a.id, a));
+          localAnswers.forEach((la) => {
+            if (!answerMap.has(la.id)) {
+              answerMap.set(la.id, la);
+            }
+          });
+
+          localStorage.setItem('sibks_answers_v2', JSON.stringify(Array.from(answerMap.values())));
 
           if (onSyncCallback) onSyncCallback();
           window.dispatchEvent(new CustomEvent('sibks_data_synced'));
