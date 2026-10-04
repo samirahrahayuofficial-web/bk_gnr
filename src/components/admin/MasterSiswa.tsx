@@ -21,9 +21,11 @@ import {
   Square,
   AlertTriangle,
   CheckCircle2,
+  UploadCloud,
 } from 'lucide-react';
 import { ReportingService } from '../../services/ReportingService';
 import { initialStudents, initialClasses, initialStudyPrograms } from '../../db/seedData';
+import { ImportSiswaModal } from './ImportSiswaModal';
 
 export const MasterSiswa: React.FC = () => {
   const { currentUser, role } = useAuth();
@@ -49,6 +51,9 @@ export const MasterSiswa: React.FC = () => {
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [confirmDeleteText, setConfirmDeleteText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Import Modal State
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -119,11 +124,20 @@ export const MasterSiswa: React.FC = () => {
   };
 
   // Single Delete
-  const handleDelete = (id: string, sName: string) => {
-    if (confirm(`Yakin ingin menghapus data siswa: ${sName}?`)) {
+  const handleDelete = async (id: string, sName: string) => {
+    try {
+      // Immediate local state update
+      setStudents((prev) => prev.filter((s) => s.id !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+
       db.deleteStudent(id);
       const studentUsers = db.getUsers().filter((u) => u.related_id === id);
       studentUsers.forEach((u) => db.deleteUser(u.id));
+
       if (currentUser) {
         AuditService.log(
           currentUser.id,
@@ -135,18 +149,24 @@ export const MasterSiswa: React.FC = () => {
           id
         );
       }
-      reloadData();
       showToast('info', 'Dihapus', `Data siswa ${sName} berhasil dihapus.`);
+    } catch (e) {
+      reloadData();
+      showToast('error', 'Gagal', `Gagal menghapus siswa ${sName}.`);
     }
   };
 
   // Bulk Delete Selected
-  const handleBulkDeleteSelected = () => {
+  const handleBulkDeleteSelected = async () => {
     const count = selectedIds.size;
     if (count === 0) return;
 
-    if (confirm(`PERINGATAN: Apakah Anda yakin ingin menghapus ${count} data siswa yang dipilih? Tindakan ini tidak dapat dibatalkan.`)) {
+    try {
       const idsArray = Array.from(selectedIds);
+      const idSet = new Set(idsArray);
+      setStudents((prev) => prev.filter((s) => !idSet.has(s.id)));
+      setSelectedIds(new Set());
+
       db.deleteStudentsBatch(idsArray);
       if (currentUser) {
         AuditService.log(
@@ -158,16 +178,21 @@ export const MasterSiswa: React.FC = () => {
           `Menghapus massal (bulk delete) ${count} data siswa.`
         );
       }
+      showToast('success', 'Bulk Hapus Berhasil', `${count} data siswa berhasil dihapus.`);
+    } catch (e) {
       reloadData();
-      showToast('success', 'Bulk Hapus Berhasil', `${count} data siswa berhasil dihapus dari sistem dan cloud.`);
+      showToast('error', 'Gagal', 'Terjadi kesalahan saat menghapus siswa terpilih.');
     }
   };
 
   // Bulk Delete All Students
-  const handleConfirmDeleteAll = () => {
+  const handleConfirmDeleteAll = async () => {
     setIsDeleting(true);
     try {
       const totalCount = students.length;
+      setStudents([]);
+      setSelectedIds(new Set());
+
       db.deleteAllStudents();
       if (currentUser) {
         AuditService.log(
@@ -180,11 +205,11 @@ export const MasterSiswa: React.FC = () => {
         );
       }
       setShowDeleteAllModal(false);
-      setConfirmDeleteText('');
+      showToast('success', 'Data Siswa Dikosongkan', `Berhasil menghapus seluruh data siswa dari sistem & Cloud.`);
+    } catch (e: any) {
+      console.error('Failed to delete all students:', e);
       reloadData();
-      showToast('warning', 'Seluruh Data Siswa Terhapus', `Berhasil menghapus ${totalCount} data siswa dari database lokal & cloud.`);
-    } catch (e) {
-      showToast('error', 'Gagal', 'Terjadi kesalahan saat menghapus seluruh data siswa.');
+      showToast('error', 'Gagal', e.message || 'Terjadi kesalahan saat menghapus data siswa.');
     } finally {
       setIsDeleting(false);
     }
@@ -383,6 +408,15 @@ export const MasterSiswa: React.FC = () => {
           >
             <RotateCcw className="w-3.5 h-3.5 text-indigo-600" />
             <span className="hidden md:inline">Reload Data Lengkap</span>
+          </button>
+
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            title="Impor data siswa baru dari file CSV / Excel"
+          >
+            <UploadCloud className="w-4 h-4" />
+            <span>Impor CSV Siswa</span>
           </button>
 
           <button
@@ -711,38 +745,37 @@ export const MasterSiswa: React.FC = () => {
             </div>
 
             <div className="space-y-3">
-              <div>
-                <label className="block text-[11px] text-slate-600 font-semibold mb-1">
-                  Ketik <strong>HAPUS SEMUA</strong> untuk konfirmasi:
-                </label>
+              <label className="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 cursor-pointer">
                 <input
-                  type="text"
-                  value={confirmDeleteText}
-                  onChange={(e) => setConfirmDeleteText(e.target.value)}
-                  placeholder="Ketik: HAPUS SEMUA"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono font-bold focus:outline-rose-500"
+                  type="checkbox"
+                  checked={confirmDeleteText === 'YES'}
+                  onChange={(e) => setConfirmDeleteText(e.target.checked ? 'YES' : '')}
+                  className="rounded border-slate-300 text-rose-600 focus:ring-rose-500"
                 />
-              </div>
+                <span className="font-semibold text-slate-800">
+                  Saya setuju untuk mengosongkan seluruh data siswa ({students.length} siswa).
+                </span>
+              </label>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="flex items-center gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => {
                     setShowDeleteAllModal(false);
                     setConfirmDeleteText('');
                   }}
-                  className="flex-1 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
+                  className="flex-1 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-50 transition-colors cursor-pointer"
                 >
                   Batalkan
                 </button>
                 <button
                   type="button"
-                  disabled={confirmDeleteText !== 'HAPUS SEMUA' || isDeleting}
+                  disabled={confirmDeleteText !== 'YES' || isDeleting}
                   onClick={handleConfirmDeleteAll}
-                  className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold shadow-sm transition-colors cursor-pointer flex items-center justify-center gap-1.5"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isDeleting ? 'Menghapus...' : 'Ya, Hapus Semua'}</span>
+                  <Trash2 className="w-4 h-4" />
+                  <span>{isDeleting ? 'Sedang Menghapus...' : 'Ya, Hapus Semua Sekarang'}</span>
                 </button>
               </div>
             </div>
@@ -884,6 +917,12 @@ export const MasterSiswa: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Import CSV Modal */}
+      <ImportSiswaModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        onSuccess={reloadData}
+      />
     </div>
   );
 };

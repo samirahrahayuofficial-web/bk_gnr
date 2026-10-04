@@ -6,6 +6,8 @@ import {
   onSnapshot,
   getDocs,
   writeBatch,
+  query,
+  where,
 } from 'firebase/firestore';
 import { firestore } from '../db/firebase';
 import {
@@ -140,21 +142,16 @@ export class CloudSyncService {
       const unsubStudents = onSnapshot(
         studentsCol,
         (snap) => {
+          const cloudStudents: Student[] = [];
           if (!snap.empty) {
-            const cloudStudents: Student[] = [];
             snap.forEach((d) => {
               const data = d.data() as Student;
               if (data && data.id) cloudStudents.push(data);
             });
-            localStorage.setItem('sibks_students_v2', JSON.stringify(cloudStudents));
-            if (onSyncCallback) onSyncCallback();
-            window.dispatchEvent(new CustomEvent('sibks_data_synced'));
-          } else {
-            const local = JSON.parse(localStorage.getItem('sibks_students_v2') || '[]');
-            if (local.length > 0) {
-              this.syncAllStudentsToCloud(local);
-            }
           }
+          localStorage.setItem('sibks_students_v2', JSON.stringify(cloudStudents));
+          if (onSyncCallback) onSyncCallback();
+          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
         },
         (err) => console.error('Students listener error:', err)
       );
@@ -455,21 +452,46 @@ export class CloudSyncService {
   public static async syncAllStudentsToCloud(students: Student[]): Promise<void> {
     if (!students || students.length === 0) return;
     try {
-      const batch = writeBatch(firestore);
-      students.forEach((s) => {
-        const docRef = doc(firestore, 'students', s.id);
-        batch.set(docRef, s, { merge: true });
-      });
-      await batch.commit();
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < students.length; i += CHUNK_SIZE) {
+        const chunk = students.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(firestore);
+        chunk.forEach((s) => {
+          const docRef = doc(firestore, 'students', s.id);
+          batch.set(docRef, s, { merge: true });
+        });
+        await batch.commit();
+      }
     } catch (e) {
       console.error('Failed to sync all students to cloud', e);
     }
   }
 
-  public static async deleteStudentFromCloud(id: string): Promise<void> {
+  public static async deleteStudentFromCloud(idOrNis: string): Promise<void> {
     try {
-      const docRef = doc(firestore, 'students', id);
+      // Direct doc deletion
+      const docRef = doc(firestore, 'students', idOrNis);
       await deleteDoc(docRef);
+
+      // Query any doc where id == idOrNis or nis == idOrNis
+      const studentsCol = collection(firestore, 'students');
+      const snap = await getDocs(studentsCol);
+      if (!snap.empty) {
+        const batch = writeBatch(firestore);
+        let count = 0;
+        snap.forEach((d) => {
+          const data = d.data() as Student;
+          if (d.id === idOrNis || (data && (data.id === idOrNis || data.nis === idOrNis))) {
+            batch.delete(d.ref);
+            count++;
+          }
+        });
+        if (count > 0) await batch.commit();
+      }
+
+      // Also delete student user doc
+      const userDocRef = doc(firestore, 'users', `usr-std-${idOrNis}`);
+      await deleteDoc(userDocRef);
     } catch (e) {
       console.error('Failed to delete student from cloud', e);
     }
@@ -478,12 +500,28 @@ export class CloudSyncService {
   public static async deleteStudentsBatchFromCloud(ids: string[]): Promise<void> {
     if (!ids || ids.length === 0) return;
     try {
-      const batch = writeBatch(firestore);
-      ids.forEach((id) => {
-        const docRef = doc(firestore, 'students', id);
-        batch.delete(docRef);
+      const idSet = new Set(ids);
+      const studentsCol = collection(firestore, 'students');
+      const snap = await getDocs(studentsCol);
+      if (snap.empty) return;
+
+      const toDeleteRefs: any[] = [];
+      snap.forEach((d) => {
+        const data = d.data() as Student;
+        if (idSet.has(d.id) || (data && (idSet.has(data.id) || idSet.has(data.nis)))) {
+          toDeleteRefs.push(d.ref);
+        }
       });
-      await batch.commit();
+
+      const CHUNK_SIZE = 400;
+      for (let i = 0; i < toDeleteRefs.length; i += CHUNK_SIZE) {
+        const chunk = toDeleteRefs.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(firestore);
+        chunk.forEach((ref) => {
+          batch.delete(ref);
+        });
+        await batch.commit();
+      }
     } catch (e) {
       console.error('Failed to delete students batch from cloud', e);
     }
@@ -493,12 +531,34 @@ export class CloudSyncService {
     try {
       const studentsCol = collection(firestore, 'students');
       const snap = await getDocs(studentsCol);
-      if (snap.empty) return;
-      const batch = writeBatch(firestore);
-      snap.forEach((d) => {
-        batch.delete(d.ref);
-      });
-      await batch.commit();
+      if (!snap.empty) {
+        const docs = snap.docs;
+        const CHUNK_SIZE = 400;
+        for (let i = 0; i < docs.length; i += CHUNK_SIZE) {
+          const chunk = docs.slice(i, i + CHUNK_SIZE);
+          const batch = writeBatch(firestore);
+          chunk.forEach((d) => {
+            batch.delete(d.ref);
+          });
+          await batch.commit();
+        }
+      }
+
+      // Clean student user documents in Firestore
+      const usersCol = collection(firestore, 'users');
+      const userSnap = await getDocs(query(usersCol, where('role', '==', 'SISWA')));
+      if (!userSnap.empty) {
+        const userDocs = userSnap.docs;
+        const CHUNK_SIZE = 400;
+        for (let i = 0; i < userDocs.length; i += CHUNK_SIZE) {
+          const chunk = userDocs.slice(i, i + CHUNK_SIZE);
+          const batch = writeBatch(firestore);
+          chunk.forEach((d) => {
+            batch.delete(d.ref);
+          });
+          await batch.commit();
+        }
+      }
     } catch (e) {
       console.error('Failed to delete all students from cloud', e);
     }

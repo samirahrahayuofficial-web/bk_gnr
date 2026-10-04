@@ -350,7 +350,7 @@ class RelationalDatabase {
 
   // Students
   public getStudents(): Student[] {
-    return this.get<Student[]>(STORAGE_KEYS.STUDENTS, initialStudents);
+    return this.get<Student[]>(STORAGE_KEYS.STUDENTS, []);
   }
   public saveStudent(student: Student): void {
     const list = this.getStudents();
@@ -380,6 +380,12 @@ class RelationalDatabase {
     CloudSyncService.deleteAllStudentsFromCloud();
     const remainingUsers = this.getUsers().filter((u) => u.role !== 'SISWA');
     this.set(STORAGE_KEYS.USERS, remainingUsers);
+  }
+  public saveStudentsDirectly(students: Student[], users: User[]): void {
+    this.set(STORAGE_KEYS.STUDENTS, students);
+    this.set(STORAGE_KEYS.USERS, users);
+    CloudSyncService.syncAllStudentsToCloud(students);
+    CloudSyncService.syncAllUsersToCloud(users);
   }
 
   // Teachers
