@@ -37,6 +37,7 @@ import {
   initialUsers,
   kelasXQuestions,
 } from './seedData';
+import { CloudSyncService } from '../services/CloudSyncService';
 
 const STORAGE_KEYS = {
   SETTINGS: 'sibks_settings_v2',
@@ -162,7 +163,7 @@ class RelationalDatabase {
       }
     }
 
-    // 2. Ensure 'admin' user has password 'rahasia' and is_active: true
+    // 2. Ensure 'admin' and 'samirahrahayu' users exist with password 'rahasia' and is_active: true
     const adminUser = users.find((u) => u.username.toLowerCase() === 'admin');
     if (adminUser) {
       if (!adminUser.password) {
@@ -173,6 +174,30 @@ class RelationalDatabase {
         adminUser.is_active = true;
         updated = true;
       }
+    }
+
+    const samirahUser = users.find(
+      (u) => u.username.toLowerCase() === 'samirahrahayu' || u.email?.toLowerCase() === 'samirahrahayu.official@gmail.com'
+    );
+    if (!samirahUser) {
+      users.push({
+        id: 'usr-samirah',
+        username: 'samirahrahayu',
+        name: 'Samirah Rahayu (Admin)',
+        email: 'samirahrahayu.official@gmail.com',
+        role: 'ADMIN',
+        password: 'rahasia',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      updated = true;
+    } else {
+      if (!samirahUser.password) {
+        samirahUser.password = 'rahasia';
+        updated = true;
+      }
+      samirahUser.is_active = true;
     }
 
     // 3. Ensure all other users have default password '12345678' and is_active: true if not set
@@ -507,11 +532,13 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = resp;
     else list.push(resp);
     this.set(STORAGE_KEYS.RESPONSES, list);
+    CloudSyncService.syncResponseToCloud(resp);
   }
   public deleteResponse(id: string): void {
     const list = this.getResponses().filter((r) => r.id !== id);
     this.set(STORAGE_KEYS.RESPONSES, list);
     this.deleteAnswersByResponseId(id);
+    CloudSyncService.deleteResponseFromCloud(id);
   }
 
   // Answers
@@ -522,10 +549,12 @@ class RelationalDatabase {
     let list = this.getAnswers().filter((a) => a.response_id !== responseId);
     list = [...list, ...newAnswers];
     this.set(STORAGE_KEYS.ANSWERS, list);
+    CloudSyncService.syncAnswersToCloud(newAnswers);
   }
   public deleteAnswersByResponseId(responseId: string): void {
     const list = this.getAnswers().filter((a) => a.response_id !== responseId);
     this.set(STORAGE_KEYS.ANSWERS, list);
+    CloudSyncService.deleteAnswersByResponseIdFromCloud(responseId);
   }
 
   // Follow Ups
@@ -538,10 +567,12 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = fu;
     else list.push(fu);
     this.set(STORAGE_KEYS.FOLLOW_UPS, list);
+    CloudSyncService.syncFollowUpToCloud(fu);
   }
   public deleteFollowUp(id: string): void {
     const list = this.getFollowUps().filter((f) => f.id !== id);
     this.set(STORAGE_KEYS.FOLLOW_UPS, list);
+    CloudSyncService.deleteFollowUpFromCloud(id);
   }
 
   // Counseling Notes
@@ -554,10 +585,12 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = cn;
     else list.push(cn);
     this.set(STORAGE_KEYS.COUNSELING_NOTES, list);
+    CloudSyncService.syncCounselingNoteToCloud(cn);
   }
   public deleteCounselingNote(id: string): void {
     const list = this.getCounselingNotes().filter((c) => c.id !== id);
     this.set(STORAGE_KEYS.COUNSELING_NOTES, list);
+    CloudSyncService.deleteCounselingNoteFromCloud(id);
   }
 
   // Audit Logs

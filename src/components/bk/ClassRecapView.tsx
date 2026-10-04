@@ -23,6 +23,13 @@ import { StudentDetailModal } from './StudentDetailModal';
 export const ClassRecapView: React.FC = () => {
   const { showToast } = useNotification();
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
+
   const classes = useMemo(() => db.getClasses(), [refreshKey]);
   const types = useMemo(() => db.getQuestionnaireTypes(), [refreshKey]);
 

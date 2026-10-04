@@ -1,0 +1,176 @@
+{
+  "entities": {
+    "SystemSettings": {
+      "title": "SystemSettings",
+      "description": "Pengaturan sekolah dan konfigurasi ambang batas indikasi BK",
+      "type": "object",
+      "properties": {
+        "school_name": { "type": "string" },
+        "school_npsn": { "type": "string" },
+        "school_address": { "type": "string" },
+        "principal_name": { "type": "string" },
+        "lead_counselor_name": { "type": "string" },
+        "academic_year": { "type": "string" }
+      },
+      "required": ["school_name", "school_npsn"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Pengguna sistem SIBKS (Admin, Guru BK, Siswa)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["ADMIN", "GURU_BK", "SISWA"] },
+        "password": { "type": "string" },
+        "is_active": { "type": "boolean" }
+      },
+      "required": ["id", "username", "name", "role"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Data profil siswa SMKN 1 Gunungguruh",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nis": { "type": "string" },
+        "nisn": { "type": "string" },
+        "name": { "type": "string" },
+        "class_id": { "type": "string" },
+        "gender": { "type": "string", "enum": ["L", "P"] }
+      },
+      "required": ["id", "nis", "name", "class_id"]
+    },
+    "Teacher": {
+      "title": "Teacher",
+      "description": "Data Guru BK dan Konselor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nip": { "type": "string" },
+        "name": { "type": "string" },
+        "gender": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "ClassRoom": {
+      "title": "ClassRoom",
+      "description": "Data rombongan belajar / kelas",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "grade": { "type": "string", "enum": ["X", "XI", "XII"] },
+        "study_program_id": { "type": "string" }
+      },
+      "required": ["id", "name", "grade"]
+    },
+    "StudyProgram": {
+      "title": "StudyProgram",
+      "description": "Program keahlian / konsentrasi kejuruan",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "code", "name"]
+    },
+    "QuestionnaireResponse": {
+      "title": "QuestionnaireResponse",
+      "description": "Respon pengisian angket oleh siswa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "questionnaire_type_id": { "type": "string" },
+        "student_id": { "type": "string" },
+        "status": { "type": "string", "enum": ["DRAFT", "SUBMITTED"] },
+        "submitted_at": { "type": "string" }
+      },
+      "required": ["id", "questionnaire_type_id", "student_id", "status"]
+    },
+    "QuestionnaireAnswer": {
+      "title": "QuestionnaireAnswer",
+      "description": "Jawaban per butir soal angket",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "response_id": { "type": "string" },
+        "question_id": { "type": "string" },
+        "selected_option_id": { "type": "string" },
+        "selected_value": { "type": "string" }
+      },
+      "required": ["id", "response_id", "question_id", "selected_value"]
+    },
+    "FollowUp": {
+      "title": "FollowUp",
+      "description": "Catatan tindak lanjut layanan BK untuk siswa",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "student_id": { "type": "string" },
+        "teacher_id": { "type": "string" },
+        "service_type": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "student_id", "service_type"]
+    },
+    "CounselingNote": {
+      "title": "CounselingNote",
+      "description": "Catatan rahasia konseling individual",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "student_id": { "type": "string" },
+        "teacher_id": { "type": "string" },
+        "topic": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "student_id", "topic", "notes"]
+    }
+  },
+  "firestore": {
+    "/settings/{settingId}": {
+      "schema": "SystemSettings",
+      "description": "Pengaturan sistem SIBKS"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Data akun pengguna"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Data siswa"
+    },
+    "/teachers/{teacherId}": {
+      "schema": "Teacher",
+      "description": "Data guru BK"
+    },
+    "/classes/{classId}": {
+      "schema": "ClassRoom",
+      "description": "Data rombel kelas"
+    },
+    "/programs/{programId}": {
+      "schema": "StudyProgram",
+      "description": "Data program keahlian"
+    },
+    "/responses/{responseId}": {
+      "schema": "QuestionnaireResponse",
+      "description": "Data respon angket siswa"
+    },
+    "/answers/{answerId}": {
+      "schema": "QuestionnaireAnswer",
+      "description": "Data jawaban butir angket"
+    },
+    "/follow_ups/{followUpId}": {
+      "schema": "FollowUp",
+      "description": "Data tindak lanjut layanan BK"
+    },
+    "/counseling_notes/{noteId}": {
+      "schema": "CounselingNote",
+      "description": "Catatan rahasia konseling"
+    }
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { AnalysisService } from '../../services/AnalysisService';
 import { Student } from '../../types/database';
@@ -24,6 +24,13 @@ import { StudentDetailModal } from './StudentDetailModal';
 export const StudentListBK: React.FC = () => {
   const { showToast } = useNotification();
   const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setRefreshKey((k) => k + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGrade, setSelectedGrade] = useState<'ALL' | 'X' | 'XI' | 'XII'>('ALL');
   const [selectedClass, setSelectedClass] = useState<string>('');

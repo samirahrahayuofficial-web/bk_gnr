@@ -28,6 +28,7 @@ import { StudentProfile } from './components/student/StudentProfile';
 import { GoogleSheetsManagerView } from './components/common/GoogleSheetsManagerView';
 import { GoogleSheetsSyncModal } from './components/common/GoogleSheetsSyncModal';
 import { LoginPage } from './components/common/LoginPage';
+import { CloudSyncService } from './services/CloudSyncService';
 import { Menu } from 'lucide-react';
 
 const isMenuAllowedForRole = (menu: string, r: string): boolean => {
@@ -86,6 +87,11 @@ const MainAppContent: React.FC = () => {
 
   // Questionnaire taking state for student
   const [takingTypeId, setTakingTypeId] = useState<string | null>(null);
+
+  // Initialize Firestore real-time synchronization across devices
+  useEffect(() => {
+    CloudSyncService.initCloudSync();
+  }, []);
 
   // Synchronize default menu when role or user changes
   useEffect(() => {

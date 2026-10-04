@@ -88,6 +88,17 @@ export const initialUsers: User[] = [
     updated_at: '2024-01-01',
   },
   {
+    id: 'usr-samirah',
+    username: 'samirahrahayu',
+    name: 'Samirah Rahayu (Admin)',
+    email: 'samirahrahayu.official@gmail.com',
+    role: 'ADMIN',
+    password: 'rahasia',
+    is_active: true,
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
+  },
+  {
     id: 'usr-bk-1',
     username: 'sitirahmawati',
     name: 'Dra. Hj. Siti Rahmawati, M.Pd., Kons.',

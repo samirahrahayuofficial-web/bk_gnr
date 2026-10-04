@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnalysisService } from '../../services/AnalysisService';
 import { StatCard } from '../common/StatCard';
 import { BidangBarChart } from '../charts/BidangBarChart';
@@ -14,6 +14,7 @@ import {
   TrendingUp,
   FileSpreadsheet,
   ListTodo,
+  Cloud,
 } from 'lucide-react';
 import { ReportingService } from '../../services/ReportingService';
 import { useNotification } from '../../context/NotificationContext';
@@ -23,6 +24,14 @@ interface BkDashboardProps {
 }
 
 export const BkDashboard: React.FC<BkDashboardProps> = ({ onNavigate }) => {
+  const [syncTick, setSyncTick] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setSyncTick((t) => t + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
+
   const overview = AnalysisService.getSchoolOverview();
   const { showToast } = useNotification();
 
