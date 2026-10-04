@@ -71,37 +71,56 @@ export class AnalysisService {
 
     const questions = db.getQuestions().filter((q) => q.questionnaire_type_id === type.id);
     const categories = db.getCategories().filter((c) => c.questionnaire_type_id === type.id);
-    let answers = db.getAnswers().filter((a) => a.response_id === responseId);
-
-    // Fallback 1: match response by responseId, student_id or includes
-    if (answers.length === 0) {
-      answers = db.getAnswers().filter(
-        (a) =>
-          a.response_id === resp.id ||
-          a.response_id === resp.student_id ||
-          a.response_id.includes(resp.student_id)
-      );
+    
+    // Comprehensive student identification
+    const student = db.getStudents().find((s) => s.id === resp.student_id || s.nis === resp.student_id);
+    const allStudentIds = new Set<string>();
+    if (resp.student_id) allStudentIds.add(resp.student_id);
+    if (student) {
+      allStudentIds.add(student.id);
+      allStudentIds.add(student.nis);
+      allStudentIds.add(`std-${student.nis}`);
     }
 
-    // Fallback 2: Check localStorage draft if student filled locally
+    const allDbAnswers = db.getAnswers();
+    let answers = allDbAnswers.filter((a) => {
+      if (!a) return false;
+      if (a.response_id === resp.id) return true;
+      if (a.response_id && allStudentIds.has(a.response_id)) return true;
+      if (a.response_id && Array.from(allStudentIds).some((sid) => a.response_id.includes(sid))) return true;
+      if (a.id && a.id.includes(resp.id)) return true;
+      if (a.id && Array.from(allStudentIds).some((sid) => a.id.includes(sid))) return true;
+      return false;
+    });
+
+    // Fallback: Check localStorage draft if student filled locally
     if (answers.length === 0 && resp.student_id) {
       try {
-        const draftStr = localStorage.getItem(`sibks_draft_${resp.student_id}_${resp.questionnaire_type_id}`);
-        if (draftStr) {
-          const draftMap = JSON.parse(draftStr);
-          if (draftMap && Object.keys(draftMap).length > 0) {
-            const restored: any[] = Object.entries(draftMap).map(([qId, val]: [string, any]) => ({
-              id: `ans-${resp.id}-${qId}`,
-              response_id: resp.id,
-              question_id: qId,
-              selected_option_code: val.optionCode,
-              score_value: val.scoreValue,
-              career_tag: val.careerTag,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            }));
-            db.saveAnswers(resp.id, restored);
-            answers = restored;
+        const draftKeys = [
+          `sibks_draft_${resp.student_id}_${resp.questionnaire_type_id}`,
+          student ? `sibks_draft_${student.id}_${resp.questionnaire_type_id}` : '',
+          student ? `sibks_draft_${student.nis}_${resp.questionnaire_type_id}` : '',
+        ].filter(Boolean);
+
+        for (const dKey of draftKeys) {
+          const draftStr = localStorage.getItem(dKey);
+          if (draftStr) {
+            const draftMap = JSON.parse(draftStr);
+            if (draftMap && Object.keys(draftMap).length > 0) {
+              const restored: any[] = Object.entries(draftMap).map(([qId, val]: [string, any]) => ({
+                id: `ans-${resp.id}-${qId}`,
+                response_id: resp.id,
+                question_id: qId,
+                selected_option_code: val.optionCode,
+                score_value: val.scoreValue,
+                career_tag: val.careerTag,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              }));
+              db.saveAnswers(resp.id, restored);
+              answers = restored;
+              break;
+            }
           }
         }
       } catch (e) {}
