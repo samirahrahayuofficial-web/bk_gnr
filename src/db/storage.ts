@@ -36,6 +36,7 @@ import {
   initialTeachers,
   initialUsers,
   kelasXQuestions,
+  allQuestions,
 } from './seedData';
 import { CloudSyncService } from '../services/CloudSyncService';
 
@@ -100,6 +101,14 @@ class RelationalDatabase {
     this.applyPopulateSchoolDataMigration();
     this.applyUserManagementMigration();
     this.applyAcademicYearMigration();
+    this.applyQuestionsMigration();
+  }
+
+  private applyQuestionsMigration(): void {
+    const currentQuestions = this.get<QuestionnaireQuestion[]>(STORAGE_KEYS.QUESTIONS, []);
+    if (!currentQuestions || currentQuestions.length < allQuestions.length) {
+      this.set(STORAGE_KEYS.QUESTIONS, allQuestions);
+    }
   }
 
   private applyPopulateSchoolDataMigration(): void {
@@ -545,7 +554,9 @@ class RelationalDatabase {
 
   // Questions
   public getQuestions(): QuestionnaireQuestion[] {
-    return this.get<QuestionnaireQuestion[]>(STORAGE_KEYS.QUESTIONS, []);
+    const list = this.get<QuestionnaireQuestion[]>(STORAGE_KEYS.QUESTIONS, allQuestions);
+    if (!list || list.length === 0) return allQuestions;
+    return list;
   }
   public saveQuestion(question: QuestionnaireQuestion): void {
     const list = this.getQuestions();

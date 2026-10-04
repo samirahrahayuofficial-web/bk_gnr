@@ -770,3 +770,9 @@ export const kelasXQuestions: QuestionnaireQuestion[] = kelasXStatements.map((it
 export const initialFollowUps: FollowUp[] = [];
 
 export const initialCounselingNotes: CounselingNote[] = [];
+
+export const allQuestions: QuestionnaireQuestion[] = [
+  ...kelasXQuestions,
+  ...akpdQuestions,
+  ...bmwQuestions,
+];

@@ -71,7 +71,42 @@ export class AnalysisService {
 
     const questions = db.getQuestions().filter((q) => q.questionnaire_type_id === type.id);
     const categories = db.getCategories().filter((c) => c.questionnaire_type_id === type.id);
-    const answers = db.getAnswers().filter((a) => a.response_id === responseId);
+    let answers = db.getAnswers().filter((a) => a.response_id === responseId);
+
+    // Fallback 1: match response by responseId, student_id or includes
+    if (answers.length === 0) {
+      answers = db.getAnswers().filter(
+        (a) =>
+          a.response_id === resp.id ||
+          a.response_id === resp.student_id ||
+          a.response_id.includes(resp.student_id)
+      );
+    }
+
+    // Fallback 2: Check localStorage draft if student filled locally
+    if (answers.length === 0 && resp.student_id) {
+      try {
+        const draftStr = localStorage.getItem(`sibks_draft_${resp.student_id}_${resp.questionnaire_type_id}`);
+        if (draftStr) {
+          const draftMap = JSON.parse(draftStr);
+          if (draftMap && Object.keys(draftMap).length > 0) {
+            const restored: any[] = Object.entries(draftMap).map(([qId, val]: [string, any]) => ({
+              id: `ans-${resp.id}-${qId}`,
+              response_id: resp.id,
+              question_id: qId,
+              selected_option_code: val.optionCode,
+              score_value: val.scoreValue,
+              career_tag: val.careerTag,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }));
+            db.saveAnswers(resp.id, restored);
+            answers = restored;
+          }
+        }
+      } catch (e) {}
+    }
+
     const settings = db.getSettings();
 
     if (type.scoring_model === 'CAREER_BMW') {
