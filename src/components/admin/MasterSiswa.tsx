@@ -501,6 +501,31 @@ export const MasterSiswa: React.FC = () => {
         </div>
       )}
 
+      {/* Banner if local count is low */}
+      {students.length < 500 && (
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-white/20 rounded-xl shrink-0">
+              <Users className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm">Database Resmi SMKN 1 Gunungguruh ({initialStudents.length} Siswa)</h4>
+              <p className="text-xs text-blue-100 mt-0.5">
+                Browser Anda saat ini baru memuat {students.length} siswa. Klik tombol di kanan untuk menerapkan seluruh {initialStudents.length} siswa dari daftar hadir resmi.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetToDefaultSeed}
+            className="px-4 py-2.5 bg-white text-blue-700 hover:bg-blue-50 font-extrabold text-xs rounded-xl shadow-sm transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 shrink-0"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Terapkan {initialStudents.length} Siswa Sekarang</span>
+          </button>
+        </div>
+      )}
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-xs">

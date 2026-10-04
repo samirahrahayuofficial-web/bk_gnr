@@ -288,6 +288,27 @@ class RelationalDatabase {
       ];
       this.set(STORAGE_KEYS.AUDIT_LOGS, initialAudit);
     }
+
+    // Auto-update to full official roster if existing cached array is small (< 100 items)
+    const existingStudents = this.get<Student[]>(STORAGE_KEYS.STUDENTS, []);
+    if (existingStudents.length < 100 && initialStudents.length > 500) {
+      this.set(STORAGE_KEYS.STUDENTS, initialStudents);
+      const studentUsers = initialStudents.map((s) => ({
+        id: `usr-std-${s.id}`,
+        username: s.nis,
+        name: s.name,
+        role: 'SISWA' as const,
+        email: `${s.nis}@smkn1gunungguruh.sch.id`,
+        password: s.nis,
+        is_active: true,
+        related_id: s.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+      const nonStudentUsers = this.getUsers().filter((u) => u.role !== 'SISWA');
+      this.set(STORAGE_KEYS.USERS, [...nonStudentUsers, ...studentUsers]);
+      CloudSyncService.syncAllStudentsToCloud(initialStudents);
+    }
   }
 
   // Settings
