@@ -15,6 +15,7 @@ import {
   Sliders,
   Check,
   FileSpreadsheet,
+  Cloud,
 } from 'lucide-react';
 import { UserRole } from '../../types/database';
 
@@ -75,7 +76,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenAuditLogs,
         </div>
 
         {/* Right actions: Role switcher & profile */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
+          {/* Real-time Cloud Sync Badge */}
+          <div
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
+            title="Multi-Device Cloud Firestore Aktif & Tersinkronisasi"
+          >
+            <Cloud className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="hidden md:inline">Cloud Sync</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          </div>
+
           {/* Quick Role Switcher Dropdown */}
           <div className="relative">
             <button

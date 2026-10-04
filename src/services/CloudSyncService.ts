@@ -22,10 +22,9 @@ import {
 
 export class CloudSyncService {
   private static isInitialized = false;
-  private static isSyncingFromCloud = false;
-
-  // Listeners unsubs
   private static unsubscribers: (() => void)[] = [];
+  public static isConnected = false;
+  public static lastSyncedAt: string | null = null;
 
   public static async initCloudSync(onSyncCallback?: () => void): Promise<void> {
     if (this.isInitialized) return;
@@ -34,119 +33,127 @@ export class CloudSyncService {
     try {
       // 1. Setup real-time listener for Responses (Hasil Pengisian Siswa)
       const responsesCol = collection(firestore, 'responses');
-      const unsubResponses = onSnapshot(responsesCol, (snapshot) => {
-        if (snapshot.empty && !localStorage.getItem('sibks_cloud_synced_once')) {
-          // Upload initial local responses if any to cloud
-          this.pushInitialLocalResponsesToCloud();
-          localStorage.setItem('sibks_cloud_synced_once', 'true');
-          return;
-        }
+      const unsubResponses = onSnapshot(
+        responsesCol,
+        (snapshot) => {
+          this.isConnected = true;
+          this.lastSyncedAt = new Date().toISOString();
 
-        const cloudResponses: QuestionnaireResponse[] = [];
-        snapshot.forEach((docSnap) => {
-          cloudResponses.push(docSnap.data() as QuestionnaireResponse);
-        });
+          const cloudResponses: QuestionnaireResponse[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as QuestionnaireResponse;
+            if (data && data.id) {
+              cloudResponses.push(data);
+            }
+          });
 
-        if (cloudResponses.length > 0) {
-          try {
+          // Always set local storage to mirror Cloud Firestore authoritative data
+          // if cloud has items, or if synced before
+          if (!snapshot.empty) {
+            localStorage.setItem('sibks_responses_v2', JSON.stringify(cloudResponses));
+          } else {
+            // Check if we have local submitted responses to push to clean cloud
             const local = JSON.parse(localStorage.getItem('sibks_responses_v2') || '[]') as QuestionnaireResponse[];
-            // Merge cloud responses with local
-            const map = new Map<string, QuestionnaireResponse>();
-            local.forEach((r) => map.set(r.id, r));
-            cloudResponses.forEach((r) => map.set(r.id, r));
-            localStorage.setItem('sibks_responses_v2', JSON.stringify(Array.from(map.values())));
-          } catch (e) {
-            console.error('Error merging cloud responses', e);
+            if (local.length > 0 && !localStorage.getItem('sibks_cloud_seeded_v3')) {
+              this.pushInitialLocalResponsesToCloud();
+              localStorage.setItem('sibks_cloud_seeded_v3', 'true');
+            }
           }
-        }
 
-        if (onSyncCallback) onSyncCallback();
-        window.dispatchEvent(new CustomEvent('sibks_data_synced'));
-      });
+          if (onSyncCallback) onSyncCallback();
+          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+        },
+        (error) => {
+          console.error('Firestore responses listener error:', error);
+        }
+      );
       this.unsubscribers.push(unsubResponses);
 
       // 2. Setup real-time listener for Answers (Jawaban Butir Siswa)
       const answersCol = collection(firestore, 'answers');
-      const unsubAnswers = onSnapshot(answersCol, (snapshot) => {
-        const cloudAnswers: QuestionnaireAnswer[] = [];
-        snapshot.forEach((docSnap) => {
-          cloudAnswers.push(docSnap.data() as QuestionnaireAnswer);
-        });
+      const unsubAnswers = onSnapshot(
+        answersCol,
+        (snapshot) => {
+          const cloudAnswers: QuestionnaireAnswer[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as QuestionnaireAnswer;
+            if (data && data.id) {
+              cloudAnswers.push(data);
+            }
+          });
 
-        if (cloudAnswers.length > 0) {
-          try {
-            const local = JSON.parse(localStorage.getItem('sibks_answers_v2') || '[]') as QuestionnaireAnswer[];
-            const map = new Map<string, QuestionnaireAnswer>();
-            local.forEach((a) => map.set(a.id, a));
-            cloudAnswers.forEach((a) => map.set(a.id, a));
-            localStorage.setItem('sibks_answers_v2', JSON.stringify(Array.from(map.values())));
-          } catch (e) {
-            console.error('Error merging cloud answers', e);
+          if (!snapshot.empty) {
+            localStorage.setItem('sibks_answers_v2', JSON.stringify(cloudAnswers));
           }
-        }
 
-        if (onSyncCallback) onSyncCallback();
-        window.dispatchEvent(new CustomEvent('sibks_data_synced'));
-      });
+          if (onSyncCallback) onSyncCallback();
+          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+        },
+        (error) => {
+          console.error('Firestore answers listener error:', error);
+        }
+      );
       this.unsubscribers.push(unsubAnswers);
 
       // 3. Setup real-time listener for Follow-ups (Tindak Lanjut BK)
       const followUpsCol = collection(firestore, 'follow_ups');
-      const unsubFollowUps = onSnapshot(followUpsCol, (snapshot) => {
-        const cloudList: FollowUp[] = [];
-        snapshot.forEach((docSnap) => {
-          cloudList.push(docSnap.data() as FollowUp);
-        });
+      const unsubFollowUps = onSnapshot(
+        followUpsCol,
+        (snapshot) => {
+          const cloudList: FollowUp[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as FollowUp;
+            if (data && data.id) {
+              cloudList.push(data);
+            }
+          });
 
-        if (cloudList.length > 0) {
-          try {
-            const local = JSON.parse(localStorage.getItem('sibks_follow_ups_v2') || '[]') as FollowUp[];
-            const map = new Map<string, FollowUp>();
-            local.forEach((f) => map.set(f.id, f));
-            cloudList.forEach((f) => map.set(f.id, f));
-            localStorage.setItem('sibks_follow_ups_v2', JSON.stringify(Array.from(map.values())));
-          } catch (e) {
-            console.error('Error merging follow_ups', e);
+          if (!snapshot.empty) {
+            localStorage.setItem('sibks_follow_ups_v2', JSON.stringify(cloudList));
           }
-        }
 
-        if (onSyncCallback) onSyncCallback();
-        window.dispatchEvent(new CustomEvent('sibks_data_synced'));
-      });
+          if (onSyncCallback) onSyncCallback();
+          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+        },
+        (error) => {
+          console.error('Firestore follow_ups listener error:', error);
+        }
+      );
       this.unsubscribers.push(unsubFollowUps);
 
       // 4. Setup real-time listener for Counseling Notes (Catatan Konseling)
       const notesCol = collection(firestore, 'counseling_notes');
-      const unsubNotes = onSnapshot(notesCol, (snapshot) => {
-        const cloudList: CounselingNote[] = [];
-        snapshot.forEach((docSnap) => {
-          cloudList.push(docSnap.data() as CounselingNote);
-        });
+      const unsubNotes = onSnapshot(
+        notesCol,
+        (snapshot) => {
+          const cloudList: CounselingNote[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data() as CounselingNote;
+            if (data && data.id) {
+              cloudList.push(data);
+            }
+          });
 
-        if (cloudList.length > 0) {
-          try {
-            const local = JSON.parse(localStorage.getItem('sibks_counseling_notes_v2') || '[]') as CounselingNote[];
-            const map = new Map<string, CounselingNote>();
-            local.forEach((c) => map.set(c.id, c));
-            cloudList.forEach((c) => map.set(c.id, c));
-            localStorage.setItem('sibks_counseling_notes_v2', JSON.stringify(Array.from(map.values())));
-          } catch (e) {
-            console.error('Error merging counseling_notes', e);
+          if (!snapshot.empty) {
+            localStorage.setItem('sibks_counseling_notes_v2', JSON.stringify(cloudList));
           }
-        }
 
-        if (onSyncCallback) onSyncCallback();
-        window.dispatchEvent(new CustomEvent('sibks_data_synced'));
-      });
+          if (onSyncCallback) onSyncCallback();
+          window.dispatchEvent(new CustomEvent('sibks_data_synced'));
+        },
+        (error) => {
+          console.error('Firestore notes listener error:', error);
+        }
+      );
       this.unsubscribers.push(unsubNotes);
 
-      console.log('SIBKS Multi-Device Cloud Firestore Synchronizer Active!');
+      console.log('SIBKS Multi-Device Cloud Firestore Synchronizer Active and Connected!');
     } catch (err) {
       console.error('Failed to initialize cloud sync listeners', err);
     }
   }
 
-  // Sync a single response to Firestore
+  // Push individual response to Firestore
   public static async syncResponseToCloud(resp: QuestionnaireResponse): Promise<void> {
     try {
       const docRef = doc(firestore, 'responses', resp.id);
@@ -181,7 +188,7 @@ export class CloudSyncService {
     }
   }
 
-  // Delete answers from Firestore (for Reset)
+  // Delete answers from Firestore
   public static async deleteAnswersByResponseIdFromCloud(responseId: string): Promise<void> {
     try {
       const answersCol = collection(firestore, 'answers');
