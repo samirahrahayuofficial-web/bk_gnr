@@ -39,6 +39,7 @@ import {
   allQuestions,
 } from './seedData';
 import { CloudSyncService } from '../services/CloudSyncService';
+import { MySqlSyncService } from '../services/MySqlSyncService';
 
 const STORAGE_KEYS = {
   SETTINGS: 'sibks_settings_v2',
@@ -609,6 +610,7 @@ class RelationalDatabase {
     else list.push(resp);
     this.set(STORAGE_KEYS.RESPONSES, list);
     CloudSyncService.syncResponseToCloud(resp);
+    MySqlSyncService.syncResponseToMySql(resp, this.getAnswers().filter((a) => a.response_id === resp.id));
   }
   public deleteResponse(id: string): void {
     const list = this.getResponses().filter((r) => r.id !== id);
@@ -626,6 +628,10 @@ class RelationalDatabase {
     list = [...list, ...newAnswers];
     this.set(STORAGE_KEYS.ANSWERS, list);
     CloudSyncService.syncAnswersToCloud(newAnswers);
+    const resp = this.getResponses().find((r) => r.id === responseId);
+    if (resp) {
+      MySqlSyncService.syncResponseToMySql(resp, list.filter((a) => a.response_id === responseId));
+    }
   }
   public deleteAnswersByResponseId(responseId: string): void {
     const list = this.getAnswers().filter((a) => a.response_id !== responseId);

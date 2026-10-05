@@ -16,7 +16,6 @@ import {
   Check,
   FileSpreadsheet,
   Cloud,
-  Database,
 } from 'lucide-react';
 import { UserRole } from '../../types/database';
 
@@ -24,11 +23,10 @@ interface NavbarProps {
   onOpenSettings?: () => void;
   onOpenAuditLogs?: () => void;
   onOpenGoogleSheets?: () => void;
-  onOpenMySql?: () => void;
   activeMenu: string;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenGoogleSheets, onOpenMySql }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenGoogleSheets }) => {
   const { currentUser, role, logout } = useAuth();
   const { showToast } = useNotification();
   const [settings, setSettings] = useState(() => db.getSettings());
@@ -73,26 +71,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenSettings, onOpenGoogleShee
 
         {/* Right actions: Profile, Cloud status, Settings & Logout */}
         <div className="flex items-center gap-2.5">
-          {/* TiDB Cloud MySQL Button */}
-          {onOpenMySql && (
-            <button
-              onClick={onOpenMySql}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-300 transition-colors cursor-pointer shadow-2xs"
-              title="Koneksi Database TiDB Cloud MySQL"
-            >
-              <Database className="w-3.5 h-3.5 text-cyan-700" />
-              <span className="hidden md:inline">TiDB MySQL</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-            </button>
-          )}
-
           {/* Real-time Cloud Sync Badge */}
           <div
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200"
-            title="Multi-Device Cloud Firestore Aktif & Tersinkronisasi"
+            title="Real-Time Database Sync Aktif (Cloud Firestore & TiDB MySQL)"
           >
             <Cloud className="w-3.5 h-3.5 text-emerald-600" />
-            <span className="hidden md:inline">Cloud Sync</span>
+            <span className="hidden md:inline">Realtime Sync</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           </div>
 
