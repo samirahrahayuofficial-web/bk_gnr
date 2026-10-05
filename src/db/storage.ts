@@ -590,10 +590,12 @@ class RelationalDatabase {
     if (idx >= 0) list[idx] = asg;
     else list.push(asg);
     this.set(STORAGE_KEYS.ASSIGNMENTS, list);
+    CloudSyncService.syncAssignmentToCloud(asg);
   }
   public deleteAssignment(id: string): void {
     const list = this.getAssignments().filter((a) => a.id !== id);
     this.set(STORAGE_KEYS.ASSIGNMENTS, list);
+    CloudSyncService.deleteAssignmentFromCloud(id);
   }
 
   // Responses
