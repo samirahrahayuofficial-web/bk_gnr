@@ -162,11 +162,18 @@ export class AnalysisService {
       validIds.add(student.id);
       validIds.add(student.nis);
       validIds.add(`std-${student.nis}`);
+      validIds.add(`usr-std-${student.id}`);
+      validIds.add(`usr-std-${student.nis}`);
     }
 
-    const responses = db
-      .getResponses()
-      .filter((r) => validIds.has(r.student_id) && r.status === 'SUBMITTED');
+    const responses = db.getResponses().filter((r) => {
+      if (!r) return false;
+      const isMatch =
+        validIds.has(r.student_id) ||
+        (student && r.student_id && (r.student_id === student.id || r.student_id === student.nis || r.student_id.includes(student.nis)));
+      if (!isMatch) return false;
+      return r.status === 'SUBMITTED' || (r.total_answered && r.total_answered > 0);
+    });
 
     const results = responses.map((r) => {
       const type = db.getQuestionnaireTypes().find((t) => t.id === r.questionnaire_type_id);
@@ -197,14 +204,15 @@ export class AnalysisService {
       studentIds.add(s.id);
       studentIds.add(s.nis);
       studentIds.add(`std-${s.nis}`);
+      studentIds.add(`usr-std-${s.id}`);
+      studentIds.add(`usr-std-${s.nis}`);
     });
 
-    const responses = db.getResponses().filter(
-      (r) =>
-        r.questionnaire_type_id === questionnaireTypeId &&
-        r.status === 'SUBMITTED' &&
-        studentIds.has(r.student_id)
-    );
+    const responses = db.getResponses().filter((r) => {
+      if (r.questionnaire_type_id !== questionnaireTypeId) return false;
+      if (r.status !== 'SUBMITTED' && (!r.total_answered || r.total_answered === 0)) return false;
+      return studentIds.has(r.student_id) || Array.from(studentIds).some((sid) => r.student_id?.includes(sid));
+    });
 
     const type = db.getQuestionnaireTypes().find((t) => t.id === questionnaireTypeId);
     const categories = db.getCategories().filter((c) => c.questionnaire_type_id === questionnaireTypeId);
