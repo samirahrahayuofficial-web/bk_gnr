@@ -326,37 +326,64 @@ export class AnalysisService {
   /**
    * Top 10 Most Common Student Needs
    */
-  public static getTop10Needs(questionnaireTypeId = 'qt-akpd'): TopNeedItem[] {
-    const questions = db.getQuestions().filter((q) => q.questionnaire_type_id === questionnaireTypeId);
+  public static getTop10Needs(questionnaireTypeId?: string): TopNeedItem[] {
+    const questions = db.getQuestions();
     const categories = db.getCategories();
-    const responses = db
-      .getResponses()
-      .filter((r) => r.questionnaire_type_id === questionnaireTypeId && r.status === 'SUBMITTED');
-    const responseIds = new Set(responses.map((r) => r.id));
-    const answers = db.getAnswers().filter((a) => responseIds.has(a.response_id));
+    const allResponses = db.getResponses().filter((r) => r.status === 'SUBMITTED');
+    const responses = questionnaireTypeId
+      ? allResponses.filter((r) => r.questionnaire_type_id === questionnaireTypeId)
+      : allResponses.filter((r) => r.questionnaire_type_id !== 'qt-bmw');
 
-    const totalRespondents = responses.length;
-    if (totalRespondents === 0) return [];
+    if (responses.length === 0) return [];
 
-    const stats: TopNeedItem[] = questions.map((q) => {
+    const stats: TopNeedItem[] = [];
+    const questionItems = questionnaireTypeId
+      ? questions.filter((q) => q.questionnaire_type_id === questionnaireTypeId)
+      : questions.filter((q) => q.questionnaire_type_id !== 'qt-bmw');
+
+    questionItems.forEach((q) => {
+      const qTypeResponses = responses.filter((r) => r.questionnaire_type_id === q.questionnaire_type_id);
+      if (qTypeResponses.length === 0) return;
+
+      const responseIds = new Set(qTypeResponses.map((r) => r.id));
+      const studentIds = new Set(qTypeResponses.map((r) => r.student_id));
+      const answers = db
+        .getAnswers()
+        .filter((a) => responseIds.has(a.response_id) || studentIds.has(a.response_id));
+      const qNum = String(q.question_number);
+
+      const yesCount = answers.filter((a) => {
+        const matchesQ =
+          a.question_id === q.id ||
+          a.question_id === qNum ||
+          a.question_id?.endsWith(`-${qNum}`) ||
+          a.question_id?.endsWith(`_${qNum}`);
+        if (!matchesQ) return false;
+        const code = String(a.selected_option_code || '').trim().toUpperCase();
+        return (
+          Number(a.score_value) > 0 ||
+          code === 'YA' ||
+          code === 'Y' ||
+          code === '1' ||
+          code === 'A' ||
+          code === 'TRUE'
+        );
+      }).length;
+
+      const pct = Math.round((yesCount / qTypeResponses.length) * 100);
       const cat = categories.find((c) => c.id === q.category_id);
-      const yesCount = answers.filter(
-        (a) => a.question_id === q.id && (a.selected_option_code === 'YA' || a.score_value > 0)
-      ).length;
-      const pct = Math.round((yesCount / totalRespondents) * 100);
 
-      return {
+      stats.push({
         question_id: q.id,
         question_number: q.question_number,
         statement: q.statement,
         category_name: cat ? cat.name : '-',
         total_yes: yesCount,
-        total_respondents: totalRespondents,
+        total_respondents: qTypeResponses.length,
         percentage: pct,
-      };
+      });
     });
 
-    // Sort descending by percentage/yesCount, limit 10
     stats.sort((a, b) => b.percentage - a.percentage);
     return stats.slice(0, 10);
   }
@@ -366,10 +393,8 @@ export class AnalysisService {
    */
   public static getSchoolOverview() {
     const students = db.getStudents();
-    const classes = db.getClasses();
     const responses = db.getResponses();
     const submittedResponses = responses.filter((r) => r.status === 'SUBMITTED');
-    const settings = db.getSettings();
 
     // Unique students who completed at least one questionnaire
     const studentIdToStudent = new Map<string, Student>();
@@ -404,7 +429,7 @@ export class AnalysisService {
 
     // Check priority for AKPD & Kelas X respondents
     const needAssessmentResponses = submittedResponses.filter(
-      (r) => r.questionnaire_type_id === 'qt-akpd' || r.questionnaire_type_id === 'qt-kelas-x'
+      (r) => r.questionnaire_type_id !== 'qt-bmw'
     );
     needAssessmentResponses.forEach((r) => {
       const { categoryAnalysis } = this.calculateResponseAnalysis(r.id);
@@ -416,21 +441,29 @@ export class AnalysisService {
       }
     });
 
-    // 4 Bidang Distribution (AKPD overall)
+    // 4 Bidang Distribution across all need assessment questionnaires
     const bidangStats: Record<string, { totalPct: number; count: number; name: string }> = {
-      'cat-akpd-pribadi': { totalPct: 0, count: 0, name: 'Pribadi' },
-      'cat-akpd-sosial': { totalPct: 0, count: 0, name: 'Sosial' },
-      'cat-akpd-belajar': { totalPct: 0, count: 0, name: 'Belajar' },
-      'cat-akpd-karir': { totalPct: 0, count: 0, name: 'Karir & DUDI' },
+      PRIBADI: { totalPct: 0, count: 0, name: 'Pribadi' },
+      SOSIAL: { totalPct: 0, count: 0, name: 'Sosial' },
+      BELAJAR: { totalPct: 0, count: 0, name: 'Belajar' },
+      KARIR: { totalPct: 0, count: 0, name: 'Karir & DUDI' },
     };
 
     needAssessmentResponses.forEach((r) => {
       const { categoryAnalysis } = this.calculateResponseAnalysis(r.id);
       if (categoryAnalysis) {
         categoryAnalysis.category_results.forEach((cr) => {
-          if (bidangStats[cr.category_id]) {
-            bidangStats[cr.category_id].totalPct += cr.percentage;
-            bidangStats[cr.category_id].count++;
+          let code = cr.category_code?.toUpperCase();
+          if (!code || !bidangStats[code]) {
+            const lowName = cr.category_name.toLowerCase();
+            if (lowName.includes('pribadi')) code = 'PRIBADI';
+            else if (lowName.includes('sosial')) code = 'SOSIAL';
+            else if (lowName.includes('belajar')) code = 'BELAJAR';
+            else if (lowName.includes('karir')) code = 'KARIR';
+          }
+          if (code && bidangStats[code]) {
+            bidangStats[code].totalPct += cr.percentage;
+            bidangStats[code].count++;
           }
         });
       }
@@ -474,7 +507,7 @@ export class AnalysisService {
         kombinasi: careerKom,
         total: bmwResponses.length,
       },
-      top10Needs: this.getTop10Needs('qt-akpd'),
+      top10Needs: this.getTop10Needs(),
     };
   }
 }

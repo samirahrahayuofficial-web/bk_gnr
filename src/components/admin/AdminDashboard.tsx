@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { db } from '../../db/storage';
 import { StatCard } from '../common/StatCard';
 import {
@@ -25,6 +25,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onNavigate,
   onOpenSettings,
 }) => {
+  const [syncKey, setSyncKey] = useState(0);
+
+  useEffect(() => {
+    const handleSync = () => setSyncKey((k) => k + 1);
+    window.addEventListener('sibks_data_synced', handleSync);
+    return () => window.removeEventListener('sibks_data_synced', handleSync);
+  }, []);
+
   const users = db.getUsers();
   const students = db.getStudents();
   const teachers = db.getTeachers();

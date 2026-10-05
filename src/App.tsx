@@ -88,9 +88,10 @@ const MainAppContent: React.FC = () => {
   // Questionnaire taking state for student
   const [takingTypeId, setTakingTypeId] = useState<string | null>(null);
 
-  // Initialize Firestore real-time synchronization across devices
+  // Initialize Firestore real-time synchronization across devices and pull all responses
   useEffect(() => {
     CloudSyncService.initCloudSync();
+    CloudSyncService.pullAllDataFromCloud().catch(() => {});
 
     const handleStorageSync = () => {
       window.dispatchEvent(new CustomEvent('sibks_data_synced'));

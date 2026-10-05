@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../db/storage';
 import { AnalysisService } from '../../services/AnalysisService';
 import { ReportingService } from '../../services/ReportingService';
 import { useNotification } from '../../context/NotificationContext';
+import { Student, ClassRoom, QuestionnaireResponse } from '../../types/database';
 import { Compass, FileSpreadsheet, Users, Briefcase, GraduationCap, Rocket, Scale } from 'lucide-react';
 import { CareerBadge } from '../common/CareerBadge';
 import { StudentDetailModal } from './StudentDetailModal';
@@ -20,9 +21,12 @@ export const CareerRecapView: React.FC = () => {
   const [selectedDominant, setSelectedDominant] = useState<string>('');
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
 
-  const students = db.getStudents();
-  const classes = db.getClasses();
-  const responses = db.getResponses().filter((r) => r.questionnaire_type_id === 'qt-bmw' && r.status === 'SUBMITTED');
+  const students = useMemo<Student[]>(() => db.getStudents(), [syncKey]);
+  const classes = useMemo<ClassRoom[]>(() => db.getClasses(), [syncKey]);
+  const responses = useMemo<QuestionnaireResponse[]>(
+    () => db.getResponses().filter((r) => r.questionnaire_type_id === 'qt-bmw' && r.status === 'SUBMITTED'),
+    [syncKey]
+  );
 
   const careerList = responses.map((r) => {
     const s = students.find((std) => std.id === r.student_id);
