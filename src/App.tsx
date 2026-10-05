@@ -27,6 +27,7 @@ import { StudentHistory } from './components/student/StudentHistory';
 import { StudentProfile } from './components/student/StudentProfile';
 import { GoogleSheetsManagerView } from './components/common/GoogleSheetsManagerView';
 import { GoogleSheetsSyncModal } from './components/common/GoogleSheetsSyncModal';
+import { MySqlSyncModal } from './components/common/MySqlSyncModal';
 import { LoginPage } from './components/common/LoginPage';
 import { CloudSyncService } from './services/CloudSyncService';
 import { Menu } from 'lucide-react';
@@ -84,6 +85,7 @@ const MainAppContent: React.FC = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
   const [isSheetsModalOpen, setIsSheetsModalOpen] = useState<boolean>(false);
+  const [isMySqlModalOpen, setIsMySqlModalOpen] = useState<boolean>(false);
 
   // Questionnaire taking state for student
   const [takingTypeId, setTakingTypeId] = useState<string | null>(null);
@@ -165,6 +167,7 @@ const MainAppContent: React.FC = () => {
         activeMenu={currentMenu}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
         onOpenGoogleSheets={() => setIsSheetsModalOpen(true)}
+        onOpenMySql={() => setIsMySqlModalOpen(true)}
       />
 
       <div className="flex-1 flex">
@@ -294,6 +297,12 @@ const MainAppContent: React.FC = () => {
       <GoogleSheetsSyncModal
         isOpen={isSheetsModalOpen}
         onClose={() => setIsSheetsModalOpen(false)}
+      />
+
+      {/* TiDB Cloud MySQL Sync Modal */}
+      <MySqlSyncModal
+        isOpen={isMySqlModalOpen}
+        onClose={() => setIsMySqlModalOpen(false)}
       />
     </div>
   );
